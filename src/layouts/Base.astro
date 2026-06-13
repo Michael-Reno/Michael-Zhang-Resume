@@ -98,9 +98,13 @@ if (knowsLanguage.length) personSchema.knowsLanguage = knowsLanguage;
         if (mode === 'plain') { doc.classList.add('no-gradient-text'); return; }
         if (mode === 'gradient') { return; }
 
-        // 2. Auto-detect: background-clip:text + the WebGL canvas behind it
-        //    breaks on software/SwiftShader renderers (the "friend's computer"
-        //    case). Fall back to the plain white name there.
+        // 2. Auto-detect known broken configs and fall back to plain white name.
+        //    Two failure classes:
+        //    a) Software/SwiftShader renderers — background-clip:text + WebGL canvas
+        //       breaks regardless of GPU compositing path.
+        //    b) Mac + Intel integrated GPU — Chrome's Metal compositor interacts badly
+        //       with background-clip:text when a WebGL2 canvas is live on the page,
+        //       even without CSS animations on h1. Plain white is more reliable there.
         var ok = true;
         try {
           if (
@@ -114,6 +118,12 @@ if (knowsLanguage.length) personSchema.knowsLanguage = knowsLanguage;
               if (ext) {
                 var r = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '';
                 if (/swiftshader|software|llvmpipe|basic render|mesa offscreen/i.test(r)) ok = false;
+                // Intel integrated GPU on Mac: Metal path has compositing issues
+                // with background-clip:text when WebGL2 is active.
+                if (ok && /\bIntel\b/i.test(r)) {
+                  var ua = navigator.userAgent;
+                  if (/Macintosh/i.test(ua) || /MacIntel/i.test(navigator.platform || '')) ok = false;
+                }
               }
             }
           }

@@ -160,11 +160,14 @@ h1 .ion-last {
 }
 /* Progressive enhancement: gradient where background-clip:text is supported.
    animation:none is mandatory — any opacity/transform animation on the element
-   creates a GPU compositing layer that breaks background-clip on Chrome/Mac. */
+   creates a GPU compositing layer that breaks background-clip on Chrome/Mac.
+   isolation:isolate prevents sibling-animation compositing squash from pulling
+   h1 into a shared GPU layer where background-clip:text also breaks. */
 @supports (-webkit-background-clip: text) or (background-clip: text) {
   h1 {
     opacity: 1;
     animation: none;
+    isolation: isolate;
   }
   h1 .ion-name {
     display: inline-block;
