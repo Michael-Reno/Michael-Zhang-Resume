@@ -133,8 +133,6 @@ h1 {
   font-weight: 800;
   line-height: 1.06;
   letter-spacing: -0.045em;
-  opacity: 0;
-  animation: h1-rise 0.7s ease 0.22s forwards;
 }
 h1 .ion-name {
   display: inline-block;
@@ -142,6 +140,8 @@ h1 .ion-name {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  opacity: 0;
+  animation: h1-rise 0.7s ease 0.22s forwards;
 }
 .role-line {
   margin-top: 22px;
@@ -601,7 +601,7 @@ footer {
     transition: none !important;
   }
   .eyebrow,
-  h1,
+  h1 .ion-name,
   .role-line,
   .statement,
   .badges,
