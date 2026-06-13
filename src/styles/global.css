@@ -134,13 +134,14 @@ h1 {
   line-height: 1.06;
   letter-spacing: -0.045em;
   opacity: 0;
-  animation: rise 0.7s ease 0.22s forwards;
+  animation: h1-rise 0.7s ease 0.22s forwards;
 }
 h1 .ion-name {
-  color: var(--text);
-  text-shadow:
-    0 0 60px rgba(77, 227, 255, 0.55),
-    0 0 20px rgba(77, 227, 255, 0.25);
+  display: inline-block;
+  background: linear-gradient(92deg, var(--text) 25%, var(--ion) 65%, var(--violet) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .role-line {
   margin-top: 22px;
@@ -488,6 +489,10 @@ footer {
     opacity: 1;
     transform: none;
   }
+}
+@keyframes h1-rise {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @keyframes blink {
   0%,
