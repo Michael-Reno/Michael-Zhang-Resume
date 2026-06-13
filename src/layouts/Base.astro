@@ -69,9 +69,29 @@ const personSchema = {
     <meta name="theme-color" content="#04060E" />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Detect if background-clip:text renders reliably; add class before paint to avoid flash -->
+    <!-- Decide the name "mask": gradient (default) vs plain white. Runs before
+         paint to avoid a flash. Manual override wins; otherwise auto-detect. -->
     <script is:inline>
       (function () {
+        var doc = document.documentElement;
+
+        // 1. Manual override — deterministic per device. Visit ?mask=plain to
+        //    force the plain white name (e.g. on a machine where the gradient
+        //    renders wrong), ?mask=gradient to force it back. The choice is
+        //    remembered in localStorage, so it sticks without the query string.
+        var mode = null;
+        try {
+          var q = new URLSearchParams(location.search).get('mask');
+          if (q === 'plain' || q === 'gradient') localStorage.setItem('maskMode', q);
+          mode = localStorage.getItem('maskMode');
+        } catch (e) { /* private mode etc. — fall through to auto-detect */ }
+
+        if (mode === 'plain') { doc.classList.add('no-gradient-text'); return; }
+        if (mode === 'gradient') { return; }
+
+        // 2. Auto-detect: background-clip:text + the WebGL canvas behind it
+        //    breaks on software/SwiftShader renderers (the "friend's computer"
+        //    case). Fall back to the plain white name there.
         var ok = true;
         try {
           if (
@@ -84,12 +104,12 @@ const personSchema = {
               var ext = gl.getExtension('WEBGL_debug_renderer_info');
               if (ext) {
                 var r = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '';
-                if (/swiftshader|software|llvmpipe/i.test(r)) ok = false;
+                if (/swiftshader|software|llvmpipe|basic render|mesa offscreen/i.test(r)) ok = false;
               }
             }
           }
         } catch (e) { /* keep ok = true */ }
-        if (!ok) document.documentElement.classList.add('no-gradient-text');
+        if (!ok) doc.classList.add('no-gradient-text');
       })();
     </script>
 
