@@ -141,6 +141,7 @@ h1 .ion-name {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 .role-line {
   margin-top: 22px;
