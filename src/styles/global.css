@@ -133,15 +133,12 @@ h1 {
   font-weight: 800;
   line-height: 1.06;
   letter-spacing: -0.045em;
-}
-h1 .ion-name {
-  display: inline-block;
-  background: linear-gradient(92deg, var(--text) 25%, var(--ion) 65%, var(--violet) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
   opacity: 0;
-  animation: h1-rise 0.7s ease 0.22s forwards;
+  animation: rise 0.7s ease 0.22s forwards;
+}
+h1 .ion-last {
+  color: var(--ion);
 }
 .role-line {
   margin-top: 22px;
@@ -601,7 +598,7 @@ footer {
     transition: none !important;
   }
   .eyebrow,
-  h1 .ion-name,
+  h1,
   .role-line,
   .statement,
   .badges,
