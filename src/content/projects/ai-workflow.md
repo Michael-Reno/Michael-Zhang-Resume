@@ -4,5 +4,5 @@ role: "Engineering practice"
 stack: ["Claude Code", "Anthropic API", "Spec-driven development", "Terminal tooling"]
 category: "ai-lab"
 order: 40
-summary: "Migrated my entire daily development workflow to agentic tooling across multiple production Drupal projects — executable specs, autonomous implementation, AI-assisted debugging and code review. TODO: consider writing this up as a blog post; it's a strong differentiator for senior roles."
+summary: "Migrated my entire daily development workflow to agentic tooling across multiple production Drupal projects — executable specs, autonomous implementation, AI-assisted debugging and code review."
 ---

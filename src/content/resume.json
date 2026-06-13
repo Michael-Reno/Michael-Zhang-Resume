@@ -54,13 +54,16 @@
         "Anthropic / Claude API",
         "Spec-driven autonomous development (CLAUDE.md workflows)",
         "Prompt engineering",
-        "LLM app integration (mobile + web)",
-        "TODO: add others you're comfortable defending in an interview (e.g. OpenAI API, MCP, RAG)"
+        "LLM app integration (mobile + web)"
       ]
     },
     {
       "category": "Quality & Testing",
       "items": ["PHPUnit", "Cypress", "Selenium", "Nightwatch.js", "Lighthouse audits"]
+    },
+    {
+      "category": "Third-party Integration",
+      "items": ["CRM", "DAM (Digital Asset Management)", "OpenSearch", "Google APIs"]
     },
     {
       "category": "Accessibility",
