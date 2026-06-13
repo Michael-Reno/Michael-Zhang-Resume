@@ -140,6 +140,22 @@ h1 {
 h1 .ion-last {
   color: var(--ion);
 }
+/* Progressive enhancement: gradient where background-clip:text is supported.
+   animation:none is mandatory — any opacity/transform animation on the element
+   creates a GPU compositing layer that breaks background-clip on Chrome/Mac. */
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  h1 {
+    opacity: 1;
+    animation: none;
+    background: linear-gradient(92deg, var(--text) 25%, var(--ion) 65%, var(--violet) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  h1 .ion-last {
+    color: unset;
+  }
+}
 .role-line {
   margin-top: 22px;
   font-family: var(--mono);
