@@ -1,13 +1,47 @@
 ---
-// Primary navigation — brand + anchor links, mono/terminal styling per prototype.
+// Primary navigation — brand + anchor links, mono/terminal styling.
+// Mobile: compact square hamburger that morphs into ✕ on open.
 ---
 
 <nav aria-label="Primary">
   <a class="brand" href="#top"><b>~/</b>michael-zhang</a>
-  <div class="nav-links">
-    <a href="#experience">experience</a>
-    <a href="#projects">projects</a>
-    <a href="#ai-lab">ai-lab</a>
-    <a href="#contact">contact</a>
+  <div class="nav-links" id="nav-links" role="list">
+    <a href="#experience" role="listitem">experience</a>
+    <a href="#projects" role="listitem">projects</a>
+    <a href="#ai-lab" role="listitem">ai-lab</a>
+    <a href="#contact" role="listitem">contact</a>
   </div>
+  <button
+    class="nav-toggle"
+    id="nav-toggle"
+    aria-label="Open navigation menu"
+    aria-expanded="false"
+    aria-controls="nav-links"
+  >
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 </nav>
+
+<script>
+  const toggle = document.getElementById('nav-toggle') as HTMLButtonElement | null;
+  const links  = document.getElementById('nav-links');
+
+  toggle?.addEventListener('click', () => {
+    const open = links?.classList.toggle('open') ?? false;
+    toggle.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  });
+
+  // Close when any anchor is tapped (single-page site).
+  links?.querySelectorAll('a').forEach((a) => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      toggle?.classList.remove('open');
+      toggle?.setAttribute('aria-expanded', 'false');
+      toggle?.setAttribute('aria-label', 'Open navigation menu');
+    });
+  });
+</script>

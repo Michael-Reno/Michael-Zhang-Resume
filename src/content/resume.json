@@ -76,7 +76,7 @@
   ],
   "aiTransition": {
     "heading": "AI Lab",
-    "intro": "I treat AI as an engineering discipline, not a buzzword. Over the past year I've moved my entire development workflow to agentic tooling — writing executable specifications that AI agents implement autonomously — and started shipping LLM-powered products end to end. The goal: bring the same rigour I apply to government Drupal delivery into AI-augmented engineering.",
+    "intro": "Michael treats AI as an engineering discipline, not a buzzword. Over the past year Michael has moved his entire development workflow to agentic tooling — writing executable specifications that AI agents implement autonomously — and started shipping LLM-powered products end to end. The goal: bring the same rigour Michael applies to government Drupal delivery into AI-augmented engineering.",
     "introNote": "TODO: review this framing — adjust to taste"
   },
   "education": [
