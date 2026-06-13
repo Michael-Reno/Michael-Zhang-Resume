@@ -147,6 +147,9 @@ h1 .ion-last {
   h1 {
     opacity: 1;
     animation: none;
+  }
+  h1 .ion-name {
+    display: inline-block;
     background: linear-gradient(92deg, var(--text) 25%, var(--ion) 65%, var(--violet) 100%);
     -webkit-background-clip: text;
     background-clip: text;
