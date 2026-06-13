@@ -69,6 +69,30 @@ const personSchema = {
     <meta name="theme-color" content="#04060E" />
     <meta name="generator" content={Astro.generator} />
 
+    <!-- Detect if background-clip:text renders reliably; add class before paint to avoid flash -->
+    <script is:inline>
+      (function () {
+        var ok = true;
+        try {
+          if (
+            !CSS.supports('(-webkit-background-clip:text)') &&
+            !CSS.supports('(background-clip:text)')
+          ) { ok = false; }
+          if (ok) {
+            var gl = document.createElement('canvas').getContext('webgl');
+            if (gl) {
+              var ext = gl.getExtension('WEBGL_debug_renderer_info');
+              if (ext) {
+                var r = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '';
+                if (/swiftshader|software|llvmpipe/i.test(r)) ok = false;
+              }
+            }
+          }
+        } catch (e) { /* keep ok = true */ }
+        if (!ok) document.documentElement.classList.add('no-gradient-text');
+      })();
+    </script>
+
     <script is:inline type="application/ld+json" set:html={JSON.stringify(personSchema)} />
   </head>
   <body>
