@@ -1,0 +1,51 @@
+---
+// Contact — email (JS-assembled mailto to reduce scraping), plus external
+// profile links. No phone number on the public site (kept in the PDF only).
+interface Link {
+  label: string;
+  url: string;
+}
+interface Props {
+  email: string;
+  links: Link[];
+}
+const { email, links } = Astro.props;
+
+// Drop any link whose URL is still a TODO placeholder.
+const publicLinks = links.filter((l) => !/^todo/i.test(l.url.trim()));
+const [emailUser, emailDomain] = email.split('@');
+---
+
+<section class="preview" id="contact">
+  <div class="sec-head">
+    <span class="tag">05 / contact</span>
+    <h2>Get in touch</h2>
+  </div>
+  <div class="contact-grid">
+    <a id="email-link" href="#" rel="noopener" data-user={emailUser} data-domain={emailDomain}>
+      <span class="k">email</span> <span class="v">[ enable JavaScript ]</span>
+    </a>
+    {
+      publicLinks.map((l) => (
+        <a href={l.url} target="_blank" rel="noopener">
+          <span class="k">{l.label.toLowerCase()}</span> <span class="v">↗</span>
+        </a>
+      ))
+    }
+  </div>
+</section>
+
+<script is:inline>
+  /* assemble the mailto only in the browser so the address isn't in the HTML source */
+  (() => {
+    const el = document.getElementById('email-link');
+    if (!el) return;
+    const user = el.getAttribute('data-user');
+    const domain = el.getAttribute('data-domain');
+    if (!user || !domain) return;
+    const addr = user + '@' + domain;
+    el.setAttribute('href', 'mailto:' + addr);
+    const v = el.querySelector('.v');
+    if (v) v.textContent = addr;
+  })();
+</script>

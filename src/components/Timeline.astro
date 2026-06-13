@@ -1,0 +1,46 @@
+---
+// Experience timeline — vertical, glowing ion nodes, scroll-reveal.
+// Rendered from the experience content collection (newest first by `order`).
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  items: CollectionEntry<'experience'>[];
+}
+const { items } = Astro.props;
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function fmt(ym: string): string {
+  const [y, m] = ym.split('-');
+  const mi = Number(m) - 1;
+  return MONTHS[mi] ? `${MONTHS[mi]} ${y}` : y;
+}
+function range(start: string, end?: string): string {
+  return `${fmt(start)} — ${end ? fmt(end) : 'NOW'}`;
+}
+
+const sorted = [...items].sort((a, b) => b.data.order - a.data.order);
+---
+
+<section class="preview" id="experience">
+  <div class="sec-head">
+    <span class="tag">01 / experience</span>
+    <h2>Where I've shipped</h2>
+  </div>
+  <div class="timeline">
+    {
+      sorted.map((item) => (
+        <div class="t-item reveal">
+          <span class="when">{range(item.data.start, item.data.end)}</span>
+          <h3>{item.data.title}</h3>
+          <span class="org">{item.data.org}</span>
+          <p>{item.data.highlight}</p>
+          <div class="tags">
+            {item.data.tags.map((tag) => (
+              <span class="chip">{tag}</span>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</section>

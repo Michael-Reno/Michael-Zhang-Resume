@@ -1,0 +1,51 @@
+---
+// Hero — ported verbatim from the prototype: $ whoami eyebrow, gradient name,
+// typed role rotation, statement, 4 badges, 2 CTAs.
+interface Props {
+  name: string;
+  typedRoles: string[];
+}
+const { name, typedRoles } = Astro.props;
+---
+
+<header class="hero">
+  <p class="eyebrow"><span class="prompt">$</span> whoami <span class="caret"></span></p>
+  <h1><span class="ion-name">{name}</span></h1>
+  <p class="role-line"><span class="typed tcaret" id="typed"></span></p>
+  <p class="statement">
+    Ten years building <strong>government digital services</strong> across Drupal,
+    React and GraphQL — now folding <strong>AI-augmented engineering</strong> into
+    every stage of delivery. NV1-cleared, accessibility-obsessed, Brisbane-based.
+  </p>
+  <div class="badges">
+    <span class="badge"><i>◆</i>NV1 Security Clearance</span>
+    <span class="badge"><i>◆</i>10+ yrs AU Government</span>
+    <span class="badge"><i>◆</i>WCAG 2.1 AA / AAA</span>
+    <span class="badge"><i>◆</i>EN / 中文</span>
+  </div>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#experience">View experience</a>
+    <a class="btn btn-ghost" href="/resume.pdf">Download résumé →</a>
+  </div>
+</header>
+
+<script is:inline define:vars={{ typedRoles }}>
+  /* ---------------- typed role rotation ---------------- */
+  (() => {
+    const el = document.getElementById('typed');
+    if (!el) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const roles = typedRoles;
+    if (reduced) { el.textContent = roles[0]; el.classList.remove('tcaret'); return; }
+    let r = 0, i = 0, deleting = false;
+    (function tick() {
+      const word = roles[r];
+      el.textContent = word.slice(0, i);
+      let delay = deleting ? 28 : 52;
+      if (!deleting && i === word.length) { delay = 2100; deleting = true; }
+      else if (deleting && i === 0) { deleting = false; r = (r + 1) % roles.length; delay = 350; }
+      i += deleting ? -1 : 1;
+      setTimeout(tick, delay);
+    })();
+  })();
+</script>

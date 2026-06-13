@@ -1,0 +1,53 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import GeodesicField from '../components/GeodesicField.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import StackStrip from '../components/StackStrip.astro';
+import Timeline from '../components/Timeline.astro';
+import ProjectGrid from '../components/ProjectGrid.astro';
+import SkillsMatrix from '../components/SkillsMatrix.astro';
+import Contact from '../components/Contact.astro';
+import Footer from '../components/Footer.astro';
+
+const resumeEntry = await getEntry('resume', 'resume');
+if (!resumeEntry) throw new Error('resume.json content entry not found');
+const resume = resumeEntry.data;
+
+const experience = await getCollection('experience');
+const projects = await getCollection('projects');
+const govProjects = projects.filter((p) => p.data.category === 'government');
+const aiProjects = projects.filter((p) => p.data.category === 'ai-lab');
+
+const sameAs = resume.basics.links
+  .map((l) => l.url)
+  .filter((url) => !/^todo/i.test(url.trim()));
+
+const title = 'Michael Zhang — Senior Full Stack Drupal Developer | Brisbane';
+const description =
+  'Senior Full Stack Drupal Developer — 10+ years on Australian government digital services. Drupal, GovCMS, React, GraphQL and AI-augmented engineering.';
+---
+
+<Base title={title} description={description} jobTitle={resume.basics.label} sameAs={sameAs}>
+  <GeodesicField />
+  <div class="wrap" id="top">
+    <Nav />
+    <main>
+      <Hero name={resume.basics.name} typedRoles={resume.typedRoles} />
+      <StackStrip />
+      <Timeline items={experience} />
+      <ProjectGrid id="projects" tag="02 / projects" heading="Selected government work" items={govProjects} />
+      <ProjectGrid
+        id="ai-lab"
+        tag="03 / ai-lab"
+        heading={resume.aiTransition.heading}
+        intro={resume.aiTransition.intro}
+        items={aiProjects}
+      />
+      <SkillsMatrix skills={resume.skills} />
+      <Contact email={resume.basics.email} links={resume.basics.links} />
+    </main>
+    <Footer />
+  </div>
+</Base>

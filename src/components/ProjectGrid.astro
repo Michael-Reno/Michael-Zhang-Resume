@@ -1,0 +1,47 @@
+---
+// Project grid — reused for both the `government` and `ai-lab` sections.
+// Identical card component; only the section tag / heading / intro differ.
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  id: string;
+  tag: string;
+  heading: string;
+  intro?: string;
+  items: CollectionEntry<'projects'>[];
+}
+const { id, tag, heading, intro, items } = Astro.props;
+const sorted = [...items].sort((a, b) => b.data.order - a.data.order);
+---
+
+<section class="preview" id={id}>
+  <div class="sec-head">
+    <span class="tag">{tag}</span>
+    <h2>{heading}</h2>
+  </div>
+  {intro && <p class="intro">{intro}</p>}
+  <div class="grid">
+    {
+      sorted.map((p) => (
+        <article class="card reveal">
+          <span class="role">{p.data.role}</span>
+          <h3>
+            {p.data.url ? (
+              <a href={p.data.url} target="_blank" rel="noopener">
+                {p.data.name} ↗
+              </a>
+            ) : (
+              p.data.name
+            )}
+          </h3>
+          <p>{p.data.summary}</p>
+          <div class="chips">
+            {p.data.stack.map((s) => (
+              <span class="chip">{s}</span>
+            ))}
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</section>

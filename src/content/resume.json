@@ -1,0 +1,90 @@
+{
+  "basics": {
+    "name": "Michael Zhang",
+    "legalName": "Renzong Zhang",
+    "label": "Senior Full Stack Drupal Developer",
+    "labelSecondary": "AI-Augmented Engineer",
+    "location": "Brisbane, Australia",
+    "citizenship": "Australian",
+    "clearance": "NV1 Security Clearance (active)",
+    "availability": "2 weeks notice",
+    "email": "Michael.z.viking@gmail.com",
+    "phone": "0433817855",
+    "phoneNote": "TODO: recommend OMITTING phone from the public site — keep it in the PDF only",
+    "summary": "Senior Full Stack Drupal Developer with 10+ years delivering Australian government digital transformation. Specialist in Drupal 9/10/11, GovCMS, headless CMS, React and GraphQL — now integrating AI-augmented engineering (LLM APIs, agentic coding workflows) into every stage of delivery.",
+    "links": [
+      { "label": "GitHub", "url": "https://github.com/Michael-Reno" },
+      { "label": "LinkedIn", "url": "https://www.linkedin.com/in/michael-zhang-3b2545124/" },
+      { "label": "Drupal.org", "url": "TODO: add drupal.org profile if you have one — strong signal for Drupal roles" }
+    ]
+  },
+  "badges": [
+    "NV1 Security Clearance",
+    "10+ yrs AU Government",
+    "WCAG 2.1 AA / AAA",
+    "EN / 中文 bilingual"
+  ],
+  "typedRoles": [
+    "Senior Full Stack Drupal Developer",
+    "GovCMS & Headless CMS Specialist",
+    "React · GraphQL · AWS Engineer",
+    "AI-Augmented Developer"
+  ],
+  "skills": [
+    {
+      "category": "Drupal & CMS",
+      "items": ["Drupal 7–11", "GovCMS SaaS", "Custom modules & themes", "Headless / decoupled", "Paragraphs", "Views", "Migrate API"]
+    },
+    {
+      "category": "Frontend",
+      "items": ["React.js", "Vue.js", "TypeScript", "JavaScript (ES6+)", "HTML5 / CSS3", "Responsive design", "Node.js"]
+    },
+    {
+      "category": "Backend & APIs",
+      "items": ["PHP 7/8", "Symfony", "GraphQL", "REST", "OAuth2 / SSO", "MySQL", ".NET / C#"]
+    },
+    {
+      "category": "Cloud & DevOps",
+      "items": ["AWS (EC2, S3, RDS, Elastic Beanstalk)", "Docker", "Kubernetes", "GitHub Actions", "GitLab CI/CD", "AWS CodePipeline"]
+    },
+    {
+      "category": "AI & LLM Engineering",
+      "items": [
+        "Claude Code (agentic development)",
+        "Anthropic / Claude API",
+        "Spec-driven autonomous development (CLAUDE.md workflows)",
+        "Prompt engineering",
+        "LLM app integration (mobile + web)",
+        "TODO: add others you're comfortable defending in an interview (e.g. OpenAI API, MCP, RAG)"
+      ]
+    },
+    {
+      "category": "Quality & Testing",
+      "items": ["PHPUnit", "Cypress", "Selenium", "Nightwatch.js", "Lighthouse audits"]
+    },
+    {
+      "category": "Accessibility",
+      "items": ["WCAG 2.1 AA / AAA", "WAI-ARIA", "Government accessibility compliance"]
+    },
+    {
+      "category": "Ways of working",
+      "items": ["SAFe Agile", "Scrum", "Jira", "Azure DevOps", "Git / GitHub / GitLab"]
+    }
+  ],
+  "aiTransition": {
+    "heading": "AI Lab",
+    "intro": "I treat AI as an engineering discipline, not a buzzword. Over the past year I've moved my entire development workflow to agentic tooling — writing executable specifications that AI agents implement autonomously — and started shipping LLM-powered products end to end. The goal: bring the same rigour I apply to government Drupal delivery into AI-augmented engineering.",
+    "introNote": "TODO: review this framing — adjust to taste"
+  },
+  "education": [
+    { "degree": "Master of Information Technology", "institution": "University of Western Sydney", "year": "2011" },
+    { "degree": "Bachelor of Information Technology", "institution": "Fudan University", "year": "2008" }
+  ],
+  "languages": [
+    { "language": "English", "level": "Fluent / professional" },
+    { "language": "Chinese (Mandarin)", "level": "Native" }
+  ],
+  "referees": {
+    "note": "Deliberately excluded from the website. Never publish referee names/contacts publicly — keep them in the PDF you send on request."
+  }
+}

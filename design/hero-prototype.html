@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Michael Zhang — Hero Prototype (Geodesic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Geist:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#04060E;
+    --surface:#0B101E;
+    --line:rgba(160,180,225,.10);
+    --ion:#4DE3FF;
+    --violet:#9D7BFF;
+    --text:#E8EDF8;
+    --muted:#8B95AE;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+    --display:'JetBrains Mono',ui-monospace,monospace;
+    --body:'Geist','Inter',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--void);color:var(--text);font-family:var(--body);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  ::selection{background:rgba(77,227,255,.25)}
+
+  #gl, #sky{
+    position:fixed;inset:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;
+  }
+  #sky{display:none} /* offscreen sky; shown only as no-WebGL fallback */
+
+  .wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:0 28px}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:26px 0}
+  .brand{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:.02em;text-decoration:none}
+  .brand b{color:var(--ion);font-weight:500}
+  .nav-links{display:flex;gap:28px}
+  .nav-links a{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-decoration:none;letter-spacing:.04em;transition:color .2s}
+  .nav-links a:hover,.nav-links a:focus-visible{color:var(--text)}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--ion);outline-offset:3px;border-radius:2px}
+
+  .hero{min-height:calc(100vh - 90px);display:flex;flex-direction:column;justify-content:center;padding:40px 0 80px}
+  .eyebrow{
+    font-family:var(--mono);font-size:13px;color:var(--muted);
+    display:flex;align-items:center;gap:10px;margin-bottom:26px;
+    opacity:0;animation:rise .7s ease .1s forwards;
+  }
+  .eyebrow .prompt{color:var(--ion)}
+  .eyebrow .caret{display:inline-block;width:8px;height:16px;background:var(--ion);animation:blink 1.1s steps(1) infinite;vertical-align:middle}
+  h1{
+    font-family:var(--display);font-size:clamp(36px,6.6vw,76px);
+    font-weight:800;line-height:1.06;letter-spacing:-.045em;
+    opacity:0;animation:rise .7s ease .22s forwards;
+  }
+  h1 .ion-name{
+    background:linear-gradient(92deg,var(--text) 25%,var(--ion) 65%,var(--violet) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .role-line{
+    margin-top:22px;font-family:var(--mono);font-size:clamp(14px,2vw,17px);
+    color:var(--muted);min-height:1.6em;opacity:0;animation:rise .7s ease .34s forwards;
+  }
+  .role-line .typed{color:var(--text)}
+  .role-line .tcaret{border-right:2px solid var(--ion);padding-right:2px;animation:blink 1.1s steps(1) infinite}
+  .statement{
+    margin-top:26px;max-width:560px;font-size:16.5px;line-height:1.75;color:var(--muted);
+    opacity:0;animation:rise .7s ease .46s forwards;
+  }
+  .statement strong{color:var(--text);font-weight:500}
+
+  .badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px;opacity:0;animation:rise .7s ease .58s forwards}
+  .badge{
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:7px 14px;
+    background:rgba(11,16,30,.55);backdrop-filter:blur(4px);
+  }
+  .badge i{font-style:normal;color:var(--ion);margin-right:7px}
+
+  .cta-row{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap;opacity:0;animation:rise .7s ease .7s forwards}
+  .btn{
+    font-family:var(--mono);font-size:13.5px;letter-spacing:.03em;
+    padding:13px 24px;border-radius:8px;text-decoration:none;
+    transition:transform .15s ease,box-shadow .2s ease;border:1px solid transparent;
+  }
+  .btn-primary{color:#04121a;background:var(--ion);font-weight:500}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(77,227,255,.35)}
+  .btn-ghost{color:var(--text);border-color:var(--line);background:rgba(11,16,30,.5)}
+  .btn-ghost:hover{border-color:rgba(77,227,255,.45)}
+
+  .strip{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:18px 0;margin-bottom:90px;
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);
+    display:flex;gap:34px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;
+  }
+  .strip::-webkit-scrollbar{display:none}
+  .strip span b{color:var(--ion);font-weight:400;margin-right:8px}
+
+  section.preview{padding:0 0 110px}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:36px}
+  .sec-head .tag{font-family:var(--mono);font-size:12.5px;color:var(--ion);letter-spacing:.06em}
+  .sec-head h2{font-family:var(--display);font-size:clamp(23px,3.4vw,31px);font-weight:700;letter-spacing:-.03em}
+  .timeline{border-left:1px solid var(--line);margin-left:6px}
+  .t-item{position:relative;padding:0 0 38px 32px}
+  .t-item::before{
+    content:"";position:absolute;left:-5px;top:7px;width:9px;height:9px;border-radius:50%;
+    background:var(--void);border:2px solid var(--ion);
+    box-shadow:0 0 12px rgba(77,227,255,.5);
+  }
+  .t-item .when{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+  .t-item h3{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:-.02em;margin:7px 0 4px}
+  .t-item .org{font-size:14px;color:var(--ion)}
+  .t-item p{margin-top:10px;font-size:14.5px;line-height:1.7;color:var(--muted);max-width:620px}
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  footer{
+    border-top:1px solid var(--line);padding:26px 0 40px;
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes blink{0%,55%{opacity:1}56%,100%{opacity:0}}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+    .eyebrow,h1,.role-line,.statement,.badges,.cta-row{opacity:1}
+    .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <nav aria-label="Primary">
+    <a class="brand" href="#"><b>~/</b>michael-zhang</a>
+    <div class="nav-links">
+      <a href="#experience">experience</a>
+      <a href="#">projects</a>
+      <a href="#">ai-lab</a>
+      <a href="#">contact</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <p class="eyebrow"><span class="prompt">$</span> whoami <span class="caret"></span></p>
+    <h1><span class="ion-name">Michael Zhang</span></h1>
+    <p class="role-line"><span class="typed tcaret" id="typed"></span></p>
+    <p class="statement">
+      Ten years building <strong>government digital services</strong> across Drupal,
+      React and GraphQL — now folding <strong>AI-augmented engineering</strong> into
+      every stage of delivery. NV1-cleared, accessibility-obsessed, Brisbane-based.
+    </p>
+    <div class="badges">
+      <span class="badge"><i>◆</i>NV1 Security Clearance</span>
+      <span class="badge"><i>◆</i>10+ yrs AU Government</span>
+      <span class="badge"><i>◆</i>WCAG 2.1 AA / AAA</span>
+      <span class="badge"><i>◆</i>EN / 中文</span>
+    </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#experience">View experience</a>
+      <a class="btn btn-ghost" href="#">Download résumé →</a>
+    </div>
+  </header>
+
+  <div class="strip" aria-label="Core stack">
+    <span><b>cms</b>Drupal 7–11 · GovCMS SaaS</span>
+    <span><b>frontend</b>React · Vue · TypeScript</span>
+    <span><b>api</b>GraphQL · REST · OAuth2</span>
+    <span><b>cloud</b>AWS · Docker · K8s · CI/CD</span>
+    <span><b>ai</b>Claude Code · LLM APIs · Spec-driven dev</span>
+  </div>
+
+  <section class="preview" id="experience">
+    <div class="sec-head">
+      <span class="tag">01 / experience</span>
+      <h2>Where I've shipped</h2>
+    </div>
+    <div class="timeline">
+      <div class="t-item reveal">
+        <span class="when">MAR 2023 — NOW</span>
+        <h3>Senior Drupal Developer</h3>
+        <span class="org">Queensland Police Service</span>
+        <p>Built mrq.qld.gov.au from Figma to launch; ongoing platform work across
+        police.qld.gov.au and fire.qld.gov.au — custom modules, GraphQL APIs with
+        OAuth2, and a 40% page-load reduction.</p>
+      </div>
+      <div class="t-item reveal">
+        <span class="when">JAN 2022 — FEB 2023</span>
+        <h3>Senior Drupal Developer</h3>
+        <span class="org">Services Australia</span>
+        <p>Led the Drupal 8→10 upgrade for JobAccess.gov.au and directed a
+        SharePoint-to-Drupal migration with enterprise SSO — zero-downtime releases
+        via GitLab CI/CD.</p>
+      </div>
+      <div class="t-item reveal">
+        <span class="when">DEC 2020 — DEC 2021</span>
+        <h3>Senior Drupal Developer</h3>
+        <span class="org">Digital Transformation Agency</span>
+        <p>GovCMS core contributions, WCAG 2.1 AA remediation and component-based
+        theming for the Digital Profession platform.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 Michael Zhang</span>
+    <span>WCAG 2.1 AA · built with Astro</span>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   ION SKY + GEODESIC BLACK HOLE
+   ---------------------------------------------------------------------
+   Layer 1 (#sky, offscreen): the v1 ion particle network — drifting
+   particles, neighbour links, cursor charge lines. Rendered every frame
+   to a 2D canvas that becomes the "sky" texture.
+   Layer 2 (#gl, fullscreen): a WebGL2 fragment shader that integrates
+   Schwarzschild photon geodesics per pixel and LENSES the ion sky —
+   particles bend, magnify and mirror around the event horizon.
+
+   Black hole shader adapted from s0xDk/ghostty-blackhole (MIT),
+   itself after Eric Bruneton's black hole shader. Pomodoro/token modes
+   removed; fixed-size hole with gentle drift for a website hero.
+   Keep this attribution if you reuse the shader.
+   ===================================================================== */
+
+/* ------------------------- 1. the ion sky ------------------------- */
+const Sky = (() => {
+  const canvas = document.getElementById('sky');
+  const ctx = canvas.getContext('2d');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w, h, particles = [];
+  const mouse = { x: -9999, y: -9999 };
+  const CYAN = [77, 227, 255], VIOLET = [157, 123, 255];
+
+  function resize() {
+    w = innerWidth; h = innerHeight;
+    canvas.width = w; canvas.height = h;      // 1x — it's a texture, soft glows survive sampling
+    const n = Math.min(110, Math.floor((w * h) / 16000));
+    particles = Array.from({ length: n }, () => ({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35,
+      r: Math.random() * 1.6 + .6,
+      c: Math.random() < .82 ? CYAN : VIOLET
+    }));
+  }
+
+  const LINK = 130, MOUSE_LINK = 190;
+  let lastMove = -1e9;                 // timestamp of last real pointer move
+  function draw(animate) {
+    ctx.fillStyle = '#04060E';
+    ctx.fillRect(0, 0, w, h);
+
+    /* mouse influence fades out ~1.5–2.5 s after the pointer stops:
+       a parked cursor must not keep herding particles into a clump */
+    const idle = performance.now() - lastMove;
+    const mf = Math.max(0, Math.min(1, (2500 - idle) / 1000));
+
+    if (animate) for (const p of particles) {
+      // brownian wander: keeps motion irregular forever, prevents settling
+      p.vx += (Math.random() - .5) * .016;
+      p.vy += (Math.random() - .5) * .016;
+      if (mf > 0) {
+        const dx = mouse.x - p.x, dy = mouse.y - p.y;
+        const md = Math.hypot(dx, dy);
+        if (md < MOUSE_LINK && md > .001) {
+          p.vx += dx / md * .012 * mf; p.vy += dy / md * .012 * mf;
+        }
+      }
+      const sp = Math.hypot(p.vx, p.vy), MAX = .55;
+      if (sp > MAX) { p.vx = p.vx / sp * MAX; p.vy = p.vy / sp * MAX; }
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -20) p.x = w + 20; if (p.x > w + 20) p.x = -20;
+      if (p.y < -20) p.y = h + 20; if (p.y > h + 20) p.y = -20;
+    }
+
+    for (let i = 0; i < particles.length; i++) {
+      const a = particles[i];
+      for (let j = i + 1; j < particles.length; j++) {
+        const b = particles[j];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < LINK) {
+          ctx.strokeStyle = `rgba(${a.c[0]},${a.c[1]},${a.c[2]},${(1 - d / LINK) * .14})`;
+          ctx.lineWidth = .7;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+      if (mf > 0) {
+        const dm = Math.hypot(a.x - mouse.x, a.y - mouse.y);
+        if (dm < MOUSE_LINK) {
+          ctx.strokeStyle = `rgba(77,227,255,${(1 - dm / MOUSE_LINK) * .35 * mf})`;
+          ctx.lineWidth = .9;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke();
+        }
+      }
+    }
+    for (const p of particles) {
+      ctx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},.78)`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  addEventListener('pointermove', e => {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    lastMove = performance.now();
+  });
+  addEventListener('pointerleave', () => { mouse.x = -9999; mouse.y = -9999; lastMove = -1e9; });
+
+  return { canvas, resize, draw, reduced };
+})();
+
+/* ------------------ 2. the geodesic black hole ------------------ */
+const FRAG = `#version 300 es
+precision highp float;
+/* Adapted from s0xDk/ghostty-blackhole (MIT) — Schwarzschild geodesic
+   integration in screen space; the ion-network canvas is the lensed sky. */
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec2  uCenter;        // hole position, uv (y-up)
+uniform float uRh;            // shadow radius, fraction of screen height
+uniform sampler2D uSky;
+out vec4 outColor;
+
+/* blazar-style tuning (from the user's reference screenshot) */
+const float LENS_DEPTH    = 9.0;
+const float DISK_INNER    = 3.0;     // the ISCO — innermost stable orbit
+const float DISK_OUTER    = 16.0;    // wide, wispy disk
+const float DISK_INCL     = 1.05;
+const float DISK_ROLL     = 0.55;
+const float DISK_GAIN     = 1.0;
+const float DISK_OPACITY  = 0.3;     // translucent silver haze
+const float DISK_TEMP     = 18000.0; // blue-white blackbody
+const float DOPPLER_MIX   = 1.0;     // full relativistic asymmetry
+const float DISK_BEAM     = 5.0;
+const float DISK_SPEED    = 6.0;
+const float DISK_WIND     = 9.0;
+const float DISK_CONTRAST = 1.5;
+const float EXPOSURE      = 0.75;
+const float DILATION      = 0.2;     // ×DISK_SPEED → slow, stately motion
+#define N_STEPS 48
+#define B_CRIT 2.5980762
+
+float hash21(vec2 p){ p=fract(p*vec2(234.34,435.345)); p+=dot(p,p+34.23); return fract(p.x*p.y); }
+float vnoiseWrapY(vec2 p, float perY){
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  float y0=mod(i.y,perY), y1=mod(i.y+1.0,perY);
+  return mix(mix(hash21(vec2(i.x,y0)),hash21(vec2(i.x+1.0,y0)),f.x),
+             mix(hash21(vec2(i.x,y1)),hash21(vec2(i.x+1.0,y1)),f.x),f.y);
+}
+vec2 mirrorUV(vec2 u){ return 1.0-abs(1.0-mod(u,2.0)); }
+vec2 rot(vec2 v,float a){ float c=cos(a),s=sin(a); return vec2(c*v.x-s*v.y,s*v.x+c*v.y); }
+vec3 blackbody(float T){
+  float t=clamp(T,1500.0,40000.0)/100.0;
+  float r=t<=66.0?1.0:clamp(1.292936*pow(t-60.0,-0.1332047),0.0,1.0);
+  float g=t<=66.0?clamp(0.3900816*log(t)-0.6318414,0.0,1.0)
+                 :clamp(1.1298909*pow(t-60.0,-0.0755148),0.0,1.0);
+  float b=t>=66.0?1.0:(t<=19.0?0.0:clamp(0.5432068*log(t-10.0)-1.1962540,0.0,1.0));
+  return vec3(r,g,b);
+}
+
+void main(){
+  vec2 res=uRes;
+  vec2 uv=gl_FragCoord.xy/res;          // y-up (WebGL convention)
+  float aspect=res.x/res.y;
+  float t=uTime;
+  float rin=DISK_INNER, rout=DISK_OUTER;
+  float rh=uRh;
+
+  vec2 p=(uv-uCenter)*vec2(aspect,1.0);
+  float plen=length(p);
+  float W=B_CRIT/max(rh,1e-4);
+  vec2 pr=rot(p,DISK_ROLL)*W;
+  float b=length(pr);
+
+  float window=exp(-pow(plen/(7.0*rh),2.0));
+  float bmax=rout+3.0;
+  float Z0=max(14.0,rout+5.0);
+
+  /* far field: analytic weak deflection + slight chromatic aberration */
+  if(b>=bmax){
+    float u=Z0*inversesqrt(Z0*Z0+b*b);
+    float defl=(2.0/(W*W))/max(plen,1e-4)
+             *(1.29*u+0.07)*max(LENS_DEPTH-2.14*u+0.75,0.0)*window;
+    vec2 dir=p/max(plen,1e-5);
+    vec3 term;
+    float ab=0.035*smoothstep(1.0,2.0,b/bmax);
+    for(int i=0;i<3;i++){
+      float k=1.0+(float(i)-1.0)*ab;
+      vec2 sp=p-dir*defl*k;
+      vec2 suv=mirrorUV(uCenter+sp/vec2(aspect,1.0));
+      term[i]=texture(uSky,suv)[i];
+    }
+    outColor=vec4(term,1.0);
+    return;
+  }
+
+  /* near field: integrate the photon geodesic  x'' = -(3/2) h² x / r⁵ */
+  vec3 x=vec3(pr,Z0);
+  vec3 v=vec3(0.0,0.0,-1.0);
+  float h2=dot(pr,pr);
+
+  float ci=cos(DISK_INCL), si=sin(DISK_INCL);
+  vec3 n=vec3(0.0,si,ci);
+  vec3 e2=vec3(0.0,ci,-si);
+
+  vec3 emitc=vec3(0.0);
+  float trans=1.0;
+  bool captured=false;
+  float sPrev=dot(x,n);
+  vec3 xPrev=x;
+
+  for(int i=0;i<N_STEPS;i++){
+    float r2=dot(x,x);
+    if(r2<1.0){ captured=true; break; }
+    if(x.z<-Z0&&v.z<0.0) break;
+    if(r2>4.0*Z0*Z0) break;
+    float r=sqrt(r2);
+    float dt=clamp(0.16*r,0.03,1.5);
+    vec3 a=-1.5*h2*x/(r2*r2*r);
+    v+=a*(0.5*dt);
+    x+=v*dt;
+    r2=dot(x,x); r=sqrt(r2);
+    a=-1.5*h2*x/(r2*r2*r);
+    v+=a*(0.5*dt);
+
+    float s=dot(x,n);
+    if(s*sPrev<0.0&&trans>0.02){
+      float tc=sPrev/(sPrev-s);
+      vec3 xc=mix(xPrev,x,tc);
+      float rc=length(xc);
+      if(rc>rin&&rc<rout){
+        float band=smoothstep(rin,rin*1.25,rc)*(1.0-smoothstep(rout*0.70,rout,rc));
+        float phi=atan(dot(xc,e2),xc.x);
+        float turns=phi/6.2831853;
+        float kep=pow(rin/rc,1.5);
+        float gloc=sqrt(max(1.0-1.5/rc,0.02));
+        float swirl=rc*DISK_WIND*0.12-t*kep*DISK_SPEED*gloc*DILATION;
+        float streaks=vnoiseWrapY(vec2(rc*2.8,turns*19.0+swirl*3.0),19.0)*0.65
+                     +vnoiseWrapY(vec2(rc*1.0,turns*9.0+swirl*1.5+7.0),9.0)*0.35;
+        streaks=0.35+DISK_CONTRAST*streaks*streaks;
+
+        vec3 gasdir=normalize(cross(n,xc));
+        float beta=clamp(inversesqrt(max(2.0*(rc-1.0),0.2)),0.0,0.99);
+        float g=gloc/max(1.0+beta*dot(gasdir,normalize(v)),0.05);
+        g=mix(1.0,g,DOPPLER_MIX);
+
+        float xpr=max(1.0-sqrt(rin/rc),0.0);
+        float tprof=pow(rin/rc,0.75)*pow(xpr,0.25)/0.488;
+        vec3 cbb=blackbody(DISK_TEMP*tprof*g);
+        float boost=pow(g,DISK_BEAM);
+
+        float density=band*streaks;
+        emitc+=trans*cbb*(DISK_GAIN*2.2*density*tprof*tprof*boost);
+        trans*=1.0-clamp(DISK_OPACITY*density,0.0,1.0);
+      }
+    }
+    sPrev=s; xPrev=x;
+  }
+  if(!captured&&dot(x,x)<4.0) captured=true;
+
+  vec3 bg=vec3(0.0);
+  if(!captured){
+    vec3 d=normalize(v);
+    if(d.z<-0.05){
+      float tpl=(-LENS_DEPTH-x.z)/d.z;
+      vec3 hp=x+d*tpl;
+      vec2 q=rot(hp.xy,-DISK_ROLL)/W;
+      vec2 suv=mirrorUV(uCenter+(p+(q-p)*window)/vec2(aspect,1.0));
+      float toward=smoothstep(0.05,0.35,-d.z);
+      bg+=texture(uSky,suv).rgb*toward;
+    }
+  }
+  vec3 col=bg*trans+(vec3(1.0)-exp(-emitc*EXPOSURE));
+  outColor=vec4(col,1.0);
+}`;
+
+const VERT = `#version 300 es
+void main(){
+  vec2 v=vec2((gl_VertexID<<1)&2, gl_VertexID&2);
+  gl_Position=vec4(v*2.0-1.0,0.0,1.0);
+}`;
+
+(() => {
+  const glCanvas = document.getElementById('gl');
+  const gl = glCanvas.getContext('webgl2', { antialias: false });
+  const reduced = Sky.reduced;
+
+  /* fallback: no WebGL2 → just show the ion sky on screen */
+  if (!gl) {
+    Sky.canvas.style.display = 'block';
+    Sky.resize();
+    if (reduced) { Sky.draw(false); return; }
+    (function loop() { Sky.draw(true); requestAnimationFrame(loop); })();
+    return;
+  }
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  const uRes = gl.getUniformLocation(prog, 'uRes');
+  const uTime = gl.getUniformLocation(prog, 'uTime');
+  const uCenter = gl.getUniformLocation(prog, 'uCenter');
+  const uRh = gl.getUniformLocation(prog, 'uRh');
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.uniform1i(gl.getUniformLocation(prog, 'uSky'), 0);
+
+  let w, h, dpr, texW = 0, texH = 0;
+  /* roam box: the WHOLE hole wanders the right side of the screen (y-up uv).
+     mid = box centre, amp = half-extent per axis. With DRIFT=.26 the
+     dominant x period is ~65 s and y ~45 s — clearly drifting, never rushed,
+     and the incommensurate frequencies keep the path irregular. */
+  const roam = { midX: .74, midY: .60, ampX: .14, ampY: .24 };
+  const DRIFT = .26;
+  const par = { x: 0, y: 0, tx: 0, ty: 0 };
+  let raf;
+
+  /* unit Lissajous wander (from ghostty-blackhole): 2+2 incommensurate
+     sines per axis — the path never visibly repeats, so the motion reads
+     as irregular without any randomness state */
+  function lissa(t) {
+    return [
+      .75 * Math.sin(t * .37) + .25 * Math.sin(t * .83 + 1.0),
+      .70 * Math.sin(t * .54 + 2.1) + .30 * Math.sin(t * 1.07)
+    ];
+  }
+
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 1.5);   // geodesics are expensive — cap dpr
+    w = innerWidth; h = innerHeight;
+    glCanvas.width = w * dpr; glCanvas.height = h * dpr;
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    Sky.resize();
+    const mobile = w < 760;
+    if (mobile) {           // narrow screens: upper-right, smaller box
+      roam.midX = .76; roam.midY = .76; roam.ampX = .10; roam.ampY = .14;
+    } else {
+      roam.midX = .74; roam.midY = .60; roam.ampX = .14; roam.ampY = .24;
+    }
+    holeR = mobile ? .030 : .026;   // wispy blazar disk spans ~1/3 viewport height
+  }
+  let holeR = .026;
+
+  function uploadSky() {
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    if (Sky.canvas.width !== texW || Sky.canvas.height !== texH) {
+      texW = Sky.canvas.width; texH = Sky.canvas.height;
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, Sky.canvas);
+    } else {
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, Sky.canvas);
+    }
+  }
+
+  function render(timeSec) {
+    par.x += (par.tx - par.x) * .04;
+    par.y += (par.ty - par.y) * .04;
+    const [lx, ly] = lissa(timeSec * DRIFT);
+    const cx = roam.midX + lx * roam.ampX + par.x;
+    const cy = roam.midY + ly * roam.ampY + par.y;
+    gl.uniform2f(uRes, glCanvas.width, glCanvas.height);
+    gl.uniform1f(uTime, timeSec);
+    gl.uniform2f(uCenter, cx, cy);
+    gl.uniform1f(uRh, holeR);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  function frame(now) {
+    Sky.draw(true);
+    uploadSky();
+    render(now / 1000);
+    raf = requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', () => {
+    resize();
+    if (reduced) { Sky.draw(false); uploadSky(); render(0); }
+  });
+  addEventListener('pointermove', e => {
+    par.tx = (e.clientX / w - .5) * -.022;
+    par.ty = (e.clientY / h - .5) * .016;   // y-up: invert
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (reduced) return;
+    if (document.hidden) cancelAnimationFrame(raf);
+    else raf = requestAnimationFrame(frame);
+  });
+
+  resize();
+  if (reduced) { Sky.draw(false); uploadSky(); render(0); }
+  else raf = requestAnimationFrame(frame);
+})();
+
+/* ---------------- typed role rotation ---------------- */
+(() => {
+  const el = document.getElementById('typed');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const roles = [
+    'Senior Full Stack Drupal Developer',
+    'GovCMS & Headless CMS Specialist',
+    'React · GraphQL · AWS Engineer',
+    'AI-Augmented Developer'
+  ];
+  if (reduced) { el.textContent = roles[0]; el.classList.remove('tcaret'); return; }
+  let r = 0, i = 0, deleting = false;
+  (function tick() {
+    const word = roles[r];
+    el.textContent = word.slice(0, i);
+    let delay = deleting ? 28 : 52;
+    if (!deleting && i === word.length) { delay = 2100; deleting = true; }
+    else if (deleting && i === 0) { deleting = false; r = (r + 1) % roles.length; delay = 350; }
+    i += deleting ? -1 : 1;
+    setTimeout(tick, delay);
+  })();
+})();
+
+/* ---------------- scroll reveal ---------------- */
+(() => {
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: .25 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+---
+// Skills matrix — mono category label + chip rows, from resume.json skills.
+interface Skill {
+  category: string;
+  items: string[];
+}
+interface Props {
+  skills: Skill[];
+}
+const { skills } = Astro.props;
+---
+
+<section class="preview" id="skills">
+  <div class="sec-head">
+    <span class="tag">04 / skills</span>
+    <h2>Stack &amp; tooling</h2>
+  </div>
+  <div class="skills">
+    {
+      skills.map((s) => (
+        <div class="skill-row reveal">
+          <span class="label">{s.category}</span>
+          <div class="items">
+            {s.items.map((item) => (
+              <span class="chip">{item}</span>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</section>

@@ -1,0 +1,95 @@
+---
+// Self-hosted fonts (no Google Fonts CDN — privacy + performance).
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/500.css';
+import '@fontsource/jetbrains-mono/700.css';
+import '@fontsource/jetbrains-mono/800.css';
+import '@fontsource/geist-sans/400.css';
+import '@fontsource/geist-sans/500.css';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  jobTitle?: string;
+  sameAs?: string[];
+  ogImage?: string;
+}
+const {
+  title,
+  description,
+  jobTitle = 'Senior Full Stack Drupal Developer',
+  sameAs = [],
+  ogImage = '/og.png',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageUrl = new URL(ogImage, Astro.site).href;
+
+const personSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Michael Zhang',
+  jobTitle,
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Brisbane',
+    addressRegion: 'QLD',
+    addressCountry: 'AU',
+  },
+  url: canonical,
+  sameAs,
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:locale" content="en_AU" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <meta name="theme-color" content="#04060E" />
+    <meta name="generator" content={Astro.generator} />
+
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(personSchema)} />
+  </head>
+  <body>
+    <slot />
+
+    <script>
+      /* ---------------- scroll reveal ---------------- */
+      (() => {
+        const io = new IntersectionObserver(
+          (es) => {
+            es.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target.classList.add('in');
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.25 }
+        );
+        document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+      })();
+    </script>
+  </body>
+</html>
