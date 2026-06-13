@@ -191,6 +191,7 @@ h1 .ion-name {
   border-radius: 999px;
   padding: 7px 14px;
   background: rgba(11, 16, 30, 0.55);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 .badge i {
@@ -360,6 +361,7 @@ section.preview {
   border-radius: 12px;
   padding: 22px;
   background: rgba(11, 16, 30, 0.45);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   transition: border-color 0.2s ease, transform 0.15s ease;
 }
