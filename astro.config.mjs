@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 // Static output, deployed to Vercel with zero config.
@@ -7,6 +8,7 @@ import tailwindcss from '@tailwindcss/vite';
 // swap for a custom domain here once DNS is set up.
 export default defineConfig({
   site: 'https://michael-zhang-resume-bris.vercel.app',
+  integrations: [sitemap()],
   vite: {
     // Cast works around a Vite version mismatch between @tailwindcss/vite and
     // Astro's bundled Vite types — runtime is unaffected.

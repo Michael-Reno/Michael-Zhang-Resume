@@ -14,6 +14,9 @@ interface Props {
   jobTitle?: string;
   sameAs?: string[];
   ogImage?: string;
+  personDescription?: string;
+  alumniOf?: Array<{ name: string }>;
+  knowsLanguage?: string[];
 }
 const {
   title,
@@ -21,12 +24,15 @@ const {
   jobTitle = 'Senior Full Stack Drupal Developer',
   sameAs = [],
   ogImage = '/og.png',
+  personDescription,
+  alumniOf = [],
+  knowsLanguage = [],
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
 const ogImageUrl = new URL(ogImage, Astro.site).href;
 
-const personSchema = {
+const personSchema: Record<string, unknown> = {
   '@context': 'https://schema.org',
   '@type': 'Person',
   name: 'Michael Zhang',
@@ -40,6 +46,9 @@ const personSchema = {
   url: canonical,
   sameAs,
 };
+if (personDescription) personSchema.description = personDescription;
+if (alumniOf.length) personSchema.alumniOf = alumniOf.map((e) => ({ '@type': 'CollegeOrUniversity', name: e.name }));
+if (knowsLanguage.length) personSchema.knowsLanguage = knowsLanguage;
 ---
 
 <!doctype html>

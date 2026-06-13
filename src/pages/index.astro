@@ -29,7 +29,15 @@ const description =
   'Senior Full Stack Drupal Developer — 10+ years on Australian government digital services. Drupal, GovCMS, React, GraphQL and AI-augmented engineering.';
 ---
 
-<Base title={title} description={description} jobTitle={resume.basics.label} sameAs={sameAs}>
+<Base
+  title={title}
+  description={description}
+  jobTitle={resume.basics.label}
+  sameAs={sameAs}
+  personDescription={resume.basics.summary}
+  alumniOf={resume.education.map((e: { institution: string }) => ({ name: e.institution }))}
+  knowsLanguage={resume.languages.map((l: { language: string }) => l.language)}
+>
   <GeodesicField />
   <div class="wrap" id="top">
     <Nav />

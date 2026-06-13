@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://michael-zhang-resume-bris.vercel.app/sitemap-index.xml
