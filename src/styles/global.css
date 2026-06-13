@@ -137,11 +137,10 @@ h1 {
   animation: rise 0.7s ease 0.22s forwards;
 }
 h1 .ion-name {
-  background: linear-gradient(92deg, var(--text) 25%, var(--ion) 65%, var(--violet) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
+  text-shadow:
+    0 0 60px rgba(77, 227, 255, 0.55),
+    0 0 20px rgba(77, 227, 255, 0.25);
 }
 .role-line {
   margin-top: 22px;
