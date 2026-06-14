@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 // `site` drives canonical + Open Graph URLs. Point it at the live deployment;
 // swap for a custom domain here once DNS is set up.
 export default defineConfig({
-  site: 'https://michael-zhang-resume-bris.vercel.app',
+  site: 'https://michael-zhang-resume.vercel.app',
   integrations: [sitemap()],
   vite: {
     // Cast works around a Vite version mismatch between @tailwindcss/vite and
