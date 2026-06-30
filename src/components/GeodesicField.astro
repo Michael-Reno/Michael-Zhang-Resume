@@ -294,17 +294,23 @@
 
   (() => {
     const glCanvas = document.getElementById('gl') as HTMLCanvasElement;
-    const gl = glCanvas.getContext('webgl2', { antialias: false });
     const reduced = Sky.reduced;
 
-    /* fallback: no WebGL2 → just show the ion sky on screen */
-    if (!gl) {
+    /* Fallback: no WebGL2, OR any WebGL/shader failure on quirky GPUs/drivers
+       (compile/link error, context loss) → show the animated ion sky alone
+       instead of a blank background. Compatibility hardening: never leave the
+       hero empty just because the geodesic shader couldn't start. */
+    function ionSkyFallback() {
       Sky.canvas.style.display = 'block';
       Sky.resize();
       if (reduced) { Sky.draw(false); return; }
       (function loop() { Sky.draw(true); requestAnimationFrame(loop); })();
-      return;
     }
+
+    const gl = glCanvas.getContext('webgl2', { antialias: false });
+    if (!gl) { ionSkyFallback(); return; }
+
+    try {
 
     function compile(type: number, src: string) {
       const s = gl!.createShader(type)!;
@@ -418,5 +424,10 @@
     resize();
     if (reduced) { Sky.draw(false); uploadSky(); render(0); }
     else raf = requestAnimationFrame(frame);
+
+    } catch (err) {
+      console.warn('[GeodesicField] WebGL2 black hole unavailable, falling back to ion sky:', err);
+      ionSkyFallback();
+    }
   })();
 </script>

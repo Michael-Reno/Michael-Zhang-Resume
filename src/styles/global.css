@@ -647,21 +647,7 @@ footer {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-  }
-  .eyebrow,
-  h1,
-  .role-line,
-  .statement,
-  .badges,
-  .cta-row {
-    opacity: 1;
-  }
-  .reveal {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* NOTE: intentionally no prefers-reduced-motion override. This personal site
+   prioritises a consistent visual experience across machines over honouring the
+   OS reduce-motion setting, so animations run for everyone. (Owner's decision —
+   the JS background/typed-text loops make the same choice.) */
