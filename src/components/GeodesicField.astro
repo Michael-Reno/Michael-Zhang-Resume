@@ -35,7 +35,12 @@
   const Sky = (() => {
     const canvas = document.getElementById('sky') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d')!;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Background animation is intentionally ALWAYS on — we deliberately do NOT
+    // honour prefers-reduced-motion here (owner's decision, 2026-06-30). This
+    // overrides the CLAUDE.md "render one static frame under reduced-motion"
+    // rule for the hero background only; the typed-role text (Hero.astro) and
+    // CSS transitions (global.css) still respect the setting.
+    const reduced = false;
     let w: number, h: number, particles: any[] = [];
     const mouse = { x: -9999, y: -9999 };
     const CYAN = [77, 227, 255], VIOLET = [157, 123, 255];
