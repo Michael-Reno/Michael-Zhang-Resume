@@ -1,8 +1,14 @@
 ---
 // 15-second intro reel. Landscape cut on desktop, vertical cut on phones.
-// Files live in public/media/. The video only loads once the section scrolls
-// into view, and pauses when it leaves, so it does not compete with the
-// WebGL background or hurt first paint.
+// Behaviour:
+// - Loads only when the section scrolls near, so first paint is unaffected.
+// - Scrolled into view (60%+ visible): restarts from 0 and plays WITH sound,
+//   provided the visitor has interacted with the page at least once (browsers
+//   block audible autoplay until a click/tap/keypress; scrolling does not count).
+//   Before that it plays muted and shows a "tap for sound" hint.
+// - Scrolled away: mutes and pauses.
+// - Sound plays for one pass per visit to the section; the loop after that is muted.
+// - Pause / Sound buttons always override the automatic behaviour.
 const DESKTOP = { src: '/media/intro-desktop.mp4', poster: '/media/intro-desktop-poster.jpg' };
 const MOBILE = { src: '/media/intro-mobile.mp4', poster: '/media/intro-mobile-poster.jpg' };
 const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
@@ -13,93 +19,134 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
     <span class="tag">$ ./intro.mp4</span>
     <h2 id="intro-heading">The 15-second version</h2>
   </div>
-  <div class="reel-frame reveal">
-    <video
-      id="introVideo"
-      muted
-      loop
-      playsinline
-      preload="none"
-      poster={DESKTOP.poster}
-      data-desktop-src={DESKTOP.src}
-      data-desktop-poster={DESKTOP.poster}
-      data-mobile-src={MOBILE.src}
-      data-mobile-poster={MOBILE.poster}
-      data-mobile-query={MOBILE_QUERY}
-      aria-label="Intro video: Michael Zhang, Senior Drupal Developer in Brisbane. Drupal, React, Accessibility. mkbtech.com.au"
-    ></video>
+  <div class="reel-frame" id="introFrame">
+    <div class="reel-stage">
+      <video
+        id="introVideo"
+        muted
+        playsinline
+        preload="none"
+        poster={DESKTOP.poster}
+        data-desktop-src={DESKTOP.src}
+        data-desktop-poster={DESKTOP.poster}
+        data-mobile-src={MOBILE.src}
+        data-mobile-poster={MOBILE.poster}
+        data-mobile-query={MOBILE_QUERY}
+        aria-label="Intro video: Michael Zhang, Senior Drupal Developer in Brisbane. Drupal, React, Accessibility. mkbtech.com.au"
+      ></video>
+      <button type="button" class="reel-hint" id="introHint" hidden>
+        <span aria-hidden="true">♪</span> Tap for sound
+      </button>
+    </div>
     <div class="reel-controls">
       <button type="button" class="reel-btn" id="introPlay" aria-pressed="false">Play</button>
-      <button type="button" class="reel-btn" id="introSound" aria-pressed="false">Sound on</button>
+      <button type="button" class="reel-btn" id="introSound" aria-pressed="true">Sound: auto</button>
     </div>
   </div>
 </section>
 
 <script is:inline>
-  /* ---------------- intro reel: pick cut, lazy-load, play in view ---------------- */
+  /* ---------------- intro reel: pick cut, play with sound in view ---------------- */
   (() => {
     const v = document.getElementById('introVideo');
     const playBtn = document.getElementById('introPlay');
     const soundBtn = document.getElementById('introSound');
-    if (!v || !playBtn || !soundBtn) return;
+    const hint = document.getElementById('introHint');
+    if (!v || !playBtn || !soundBtn || !hint) return;
 
     const mq = window.matchMedia(v.dataset.mobileQuery);
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let soundWanted = true;   // "Sound: auto" — turned off by the Sound button
+    let userPaused = false;   // set by the Pause button
     let inView = false;
-    let userPaused = reduced; // reduced motion: wait for an explicit Play
-    let loaded = false;
+    let soundPass = false;    // true while the current pass is playing with sound
+    let activated = !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
 
     const cut = () => (mq.matches ? 'mobile' : 'desktop');
-    function applyCut(load) {
+    function load() {
       const c = cut();
       v.poster = v.dataset[c + 'Poster'];
-      if (load || loaded) {
-        const want = v.dataset[c + 'Src'];
-        if (v.getAttribute('src') !== want) {
-          const t = v.currentTime || 0;
-          v.src = want;
-          v.currentTime = t;
-          loaded = true;
-          if (inView && !userPaused) v.play().catch(() => {});
-        }
-      }
+      const want = v.dataset[c + 'Src'];
+      if (v.getAttribute('src') !== want) v.src = want;
     }
     function sync() {
       const playing = !v.paused;
       playBtn.textContent = playing ? 'Pause' : 'Play';
       playBtn.setAttribute('aria-pressed', String(playing));
-      soundBtn.textContent = v.muted ? 'Sound on' : 'Sound off';
-      soundBtn.setAttribute('aria-pressed', String(!v.muted));
+      soundBtn.textContent = soundWanted ? 'Sound: auto' : 'Sound: off';
+      soundBtn.setAttribute('aria-pressed', String(soundWanted));
+      hint.hidden = !(inView && playing && v.muted && soundWanted && !activated);
+    }
+    function playMuted() {
+      v.muted = true;
+      soundPass = false;
+      v.play().catch(() => {}).finally(sync);
+    }
+    function playWithSound() {
+      v.muted = false;
+      soundPass = true;
+      v.play().catch(() => playMuted()).finally(sync);
+    }
+    function start(fromTop) {
+      load();
+      if (userPaused) return sync();
+      if (fromTop) v.currentTime = 0;
+      if (soundWanted && activated) playWithSound();
+      else playMuted();
+    }
+    function stop() {
+      v.muted = true;
+      soundPass = false;
+      if (!v.paused) v.pause();
+      sync();
     }
 
-    applyCut(false);
-    mq.addEventListener('change', () => applyCut(false));
+    // Any click / tap / keypress counts as the user activation browsers require.
+    const markActive = () => {
+      if (activated) return;
+      activated = true;
+      if (inView && !userPaused && soundWanted && v.muted) {
+        v.currentTime = 0;
+        playWithSound();
+      }
+    };
+    ['pointerdown', 'keydown', 'touchend'].forEach((t) =>
+      window.addEventListener(t, markActive, { capture: true, passive: true })
+    );
+
+    mq.addEventListener('change', () => { if (v.getAttribute('src')) { load(); if (inView) start(true); } });
     v.addEventListener('play', sync);
     v.addEventListener('pause', sync);
     v.addEventListener('volumechange', sync);
+    v.addEventListener('ended', () => {
+      // one audible pass per visit; keep the picture looping silently after that
+      if (!inView || userPaused) return sync();
+      v.currentTime = 0;
+      playMuted();
+    });
 
+    // Fetch a little early so playback is instant when the section arrives.
+    new IntersectionObserver((es) => { if (es[0].isIntersecting) load(); }, { rootMargin: '600px 0px' }).observe(v);
     new IntersectionObserver(
-      (entries) => {
-        inView = entries[0].isIntersecting;
-        if (inView) {
-          applyCut(true);
-          if (!userPaused) v.play().catch(() => {});
-        } else if (!v.paused) {
-          v.pause();
-        }
+      (es) => {
+        const now = es[0].intersectionRatio >= 0.6;
+        if (now === inView) return;
+        inView = now;
+        if (inView) start(true);
+        else stop();
       },
-      { threshold: 0.35 }
+      { threshold: [0, 0.6] }
     ).observe(v);
 
+    hint.addEventListener('click', () => { activated = true; v.currentTime = 0; playWithSound(); });
     playBtn.addEventListener('click', () => {
-      applyCut(true);
-      if (v.paused) { userPaused = false; v.play().catch(() => {}); }
+      if (v.paused) { userPaused = false; start(false); }
       else { userPaused = true; v.pause(); }
     });
     soundBtn.addEventListener('click', () => {
-      applyCut(true);
-      v.muted = !v.muted;
-      if (!v.muted) { v.currentTime = 0; userPaused = false; v.play().catch(() => {}); }
+      soundWanted = !soundWanted;
+      if (!soundWanted) { v.muted = true; soundPass = false; sync(); }
+      else if (inView && !userPaused) { v.currentTime = 0; playWithSound(); }
+      else sync();
     });
     sync();
   })();

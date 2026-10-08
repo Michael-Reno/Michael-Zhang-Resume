@@ -138,8 +138,22 @@ if (knowsLanguage.length) personSchema.knowsLanguage = knowsLanguage;
     <slot />
 
     <script>
-      /* ---------------- scroll reveal ---------------- */
+      /* ---------------- scroll motion ---------------- */
+      // 1) Reveal: section heads, timeline items, cards and skill rows rise in,
+      //    staggered within their group. 2) Scroll-linked: top progress bar,
+      //    hero drifts up and fades as you leave it, timeline rail fills as you
+      //    read, intro reel scales up into place. One rAF-throttled scroll handler.
       (() => {
+        const root = document.documentElement;
+        root.classList.add('fx');
+
+        document.querySelectorAll('.sec-head').forEach((el) => el.classList.add('reveal', 'reveal-head'));
+        document.querySelectorAll('.grid, .skills, .timeline').forEach((group) => {
+          group.querySelectorAll(':scope > .reveal').forEach((el, i) => {
+            (el as HTMLElement).style.setProperty('--d', `${Math.min(i, 5) * 70}ms`);
+          });
+        });
+
         const io = new IntersectionObserver(
           (es) => {
             es.forEach((e) => {
@@ -149,9 +163,45 @@ if (knowsLanguage.length) personSchema.knowsLanguage = knowsLanguage;
               }
             });
           },
-          { threshold: 0.25 }
+          { threshold: 0.2, rootMargin: '0px 0px -6% 0px' }
         );
         document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+        const bar = document.createElement('div');
+        bar.className = 'scroll-progress';
+        bar.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(bar);
+
+        const hero = document.querySelector('.hero') as HTMLElement | null;
+        const timeline = document.querySelector('.timeline') as HTMLElement | null;
+        const reel = document.getElementById('introFrame');
+        const clamp = (x: number) => Math.min(1, Math.max(0, x));
+
+        let ticking = false;
+        function update() {
+          ticking = false;
+          const vh = window.innerHeight;
+          const max = root.scrollHeight - vh;
+          bar.style.transform = `scaleX(${max > 0 ? clamp(window.scrollY / max) : 0})`;
+          if (hero) {
+            const r = hero.getBoundingClientRect();
+            hero.style.setProperty('--hx', clamp(-r.top / (r.height * 0.85)).toFixed(3));
+          }
+          if (timeline) {
+            const r = timeline.getBoundingClientRect();
+            timeline.style.setProperty('--tl', clamp((vh * 0.7 - r.top) / r.height).toFixed(3));
+          }
+          if (reel) {
+            const r = reel.getBoundingClientRect();
+            reel.style.setProperty('--rv', clamp((vh - r.top) / (vh * 0.75)).toFixed(3));
+          }
+        }
+        const onScroll = () => {
+          if (!ticking) { ticking = true; requestAnimationFrame(update); }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
+        update();
       })();
     </script>
   </body>
