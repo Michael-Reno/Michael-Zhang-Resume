@@ -59,7 +59,13 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
     let userPaused = false;   // set by the Pause button
     let inView = false;
     let soundPass = false;    // true while the current pass is playing with sound
-    let activated = !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
+    // Trust the browser's own record of user activation. Our fallback flag only
+    // counts click/keydown: on phones a touch that starts a scroll fires
+    // pointerdown/touchend but is NOT activation, and treating it as one made
+    // audible play() fail silently with no hint shown.
+    let clicked = false;
+    const activated = () =>
+      navigator.userActivation ? navigator.userActivation.hasBeenActive : clicked;
 
     const cut = () => (mq.matches ? 'mobile' : 'desktop');
     function load() {
@@ -74,7 +80,7 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
       playBtn.setAttribute('aria-pressed', String(playing));
       soundBtn.textContent = soundWanted ? 'Sound: auto' : 'Sound: off';
       soundBtn.setAttribute('aria-pressed', String(soundWanted));
-      hint.hidden = !(inView && playing && v.muted && soundWanted && !activated);
+      hint.hidden = !(inView && playing && v.muted && soundWanted);
     }
     function playMuted() {
       v.muted = true;
@@ -90,7 +96,7 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
       load();
       if (userPaused) return sync();
       if (fromTop) v.currentTime = 0;
-      if (soundWanted && activated) playWithSound();
+      if (soundWanted && activated()) playWithSound();
       else playMuted();
     }
     function stop() {
@@ -101,15 +107,17 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
     }
 
     // Any click / tap / keypress counts as the user activation browsers require.
-    const markActive = () => {
-      if (activated) return;
-      activated = true;
+    // A real click/tap or keypress anywhere unlocks sound; if the reel is on screen
+    // and still muted, switch to audible playback right away.
+    const markActive = (e) => {
+      if (e.target === hint || e.target === soundBtn || e.target === playBtn) return;
+      clicked = true;
       if (inView && !userPaused && soundWanted && v.muted) {
         v.currentTime = 0;
         playWithSound();
       }
     };
-    ['pointerdown', 'keydown', 'touchend'].forEach((t) =>
+    ['click', 'keydown'].forEach((t) =>
       window.addEventListener(t, markActive, { capture: true, passive: true })
     );
 
@@ -137,7 +145,7 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
       { threshold: [0, 0.6] }
     ).observe(v);
 
-    hint.addEventListener('click', () => { activated = true; v.currentTime = 0; playWithSound(); });
+    hint.addEventListener('click', () => { clicked = true; v.currentTime = 0; playWithSound(); });
     playBtn.addEventListener('click', () => {
       if (v.paused) { userPaused = false; start(false); }
       else { userPaused = true; v.pause(); }
