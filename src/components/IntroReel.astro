@@ -1,0 +1,106 @@
+---
+// 15-second intro reel. Landscape cut on desktop, vertical cut on phones.
+// Files live in public/media/. The video only loads once the section scrolls
+// into view, and pauses when it leaves, so it does not compete with the
+// WebGL background or hurt first paint.
+const DESKTOP = { src: '/media/intro-desktop.mp4', poster: '/media/intro-desktop-poster.jpg' };
+const MOBILE = { src: '/media/intro-mobile.mp4', poster: '/media/intro-mobile-poster.jpg' };
+const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
+---
+
+<section class="preview reel" id="intro" aria-labelledby="intro-heading">
+  <div class="sec-head">
+    <span class="tag">$ ./intro.mp4</span>
+    <h2 id="intro-heading">The 15-second version</h2>
+  </div>
+  <div class="reel-frame reveal">
+    <video
+      id="introVideo"
+      muted
+      loop
+      playsinline
+      preload="none"
+      poster={DESKTOP.poster}
+      data-desktop-src={DESKTOP.src}
+      data-desktop-poster={DESKTOP.poster}
+      data-mobile-src={MOBILE.src}
+      data-mobile-poster={MOBILE.poster}
+      data-mobile-query={MOBILE_QUERY}
+      aria-label="Intro video: Michael Zhang, Senior Drupal Developer in Brisbane. Drupal, React, Accessibility. mkbtech.com.au"
+    ></video>
+    <div class="reel-controls">
+      <button type="button" class="reel-btn" id="introPlay" aria-pressed="false">Play</button>
+      <button type="button" class="reel-btn" id="introSound" aria-pressed="false">Sound on</button>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  /* ---------------- intro reel: pick cut, lazy-load, play in view ---------------- */
+  (() => {
+    const v = document.getElementById('introVideo');
+    const playBtn = document.getElementById('introPlay');
+    const soundBtn = document.getElementById('introSound');
+    if (!v || !playBtn || !soundBtn) return;
+
+    const mq = window.matchMedia(v.dataset.mobileQuery);
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let inView = false;
+    let userPaused = reduced; // reduced motion: wait for an explicit Play
+    let loaded = false;
+
+    const cut = () => (mq.matches ? 'mobile' : 'desktop');
+    function applyCut(load) {
+      const c = cut();
+      v.poster = v.dataset[c + 'Poster'];
+      if (load || loaded) {
+        const want = v.dataset[c + 'Src'];
+        if (v.getAttribute('src') !== want) {
+          const t = v.currentTime || 0;
+          v.src = want;
+          v.currentTime = t;
+          loaded = true;
+          if (inView && !userPaused) v.play().catch(() => {});
+        }
+      }
+    }
+    function sync() {
+      const playing = !v.paused;
+      playBtn.textContent = playing ? 'Pause' : 'Play';
+      playBtn.setAttribute('aria-pressed', String(playing));
+      soundBtn.textContent = v.muted ? 'Sound on' : 'Sound off';
+      soundBtn.setAttribute('aria-pressed', String(!v.muted));
+    }
+
+    applyCut(false);
+    mq.addEventListener('change', () => applyCut(false));
+    v.addEventListener('play', sync);
+    v.addEventListener('pause', sync);
+    v.addEventListener('volumechange', sync);
+
+    new IntersectionObserver(
+      (entries) => {
+        inView = entries[0].isIntersecting;
+        if (inView) {
+          applyCut(true);
+          if (!userPaused) v.play().catch(() => {});
+        } else if (!v.paused) {
+          v.pause();
+        }
+      },
+      { threshold: 0.35 }
+    ).observe(v);
+
+    playBtn.addEventListener('click', () => {
+      applyCut(true);
+      if (v.paused) { userPaused = false; v.play().catch(() => {}); }
+      else { userPaused = true; v.pause(); }
+    });
+    soundBtn.addEventListener('click', () => {
+      applyCut(true);
+      v.muted = !v.muted;
+      if (!v.muted) { v.currentTime = 0; userPaused = false; v.play().catch(() => {}); }
+    });
+    sync();
+  })();
+</script>

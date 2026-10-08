@@ -5,6 +5,7 @@ import GeodesicField from '../components/GeodesicField.astro';
 import Nav from '../components/Nav.astro';
 import Hero from '../components/Hero.astro';
 import StackStrip from '../components/StackStrip.astro';
+import IntroReel from '../components/IntroReel.astro';
 import Timeline from '../components/Timeline.astro';
 import ProjectGrid from '../components/ProjectGrid.astro';
 import SkillsMatrix from '../components/SkillsMatrix.astro';
@@ -44,6 +45,7 @@ const description =
     <main>
       <Hero name={resume.basics.name} typedRoles={resume.typedRoles} />
       <StackStrip />
+      <IntroReel />
       <Timeline items={experience} />
       <ProjectGrid id="projects" tag="02 / projects" heading="Selected government work" items={govProjects} />
       <ProjectGrid
