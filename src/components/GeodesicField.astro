@@ -35,12 +35,11 @@
   const Sky = (() => {
     const canvas = document.getElementById('sky') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d')!;
-    // Background animation is intentionally ALWAYS on — we deliberately do NOT
-    // honour prefers-reduced-motion here (owner's decision, 2026-06-30). This
-    // overrides the CLAUDE.md "render one static frame under reduced-motion"
-    // rule for the hero background only; the typed-role text (Hero.astro) and
-    // CSS transitions (global.css) still respect the setting.
-    const reduced = false;
+    // Background animation deliberately does NOT follow prefers-reduced-motion
+    // (owner's decision, 2026-06-30: machines with OS animations off were losing
+    // the look). The nav's pause button is the control instead (WCAG 2.2.2). This
+    // overrides the CLAUDE.md "one static frame under reduced-motion" rule for the
+    // background only; global.css still honours the setting for everything else.
     let w: number, h: number, particles: any[] = [];
     const mouse = { x: -9999, y: -9999 };
     const CYAN = [77, 227, 255], VIOLET = [157, 123, 255];
@@ -118,7 +117,7 @@
     });
     addEventListener('pointerleave', () => { mouse.x = -9999; mouse.y = -9999; lastMove = -1e9; });
 
-    return { canvas, resize, draw, reduced };
+    return { canvas, resize, draw };
   })();
 
   /* ------------------ 2. the geodesic black hole ------------------ */
@@ -130,6 +129,7 @@
   uniform float uTime;
   uniform vec2  uCenter;        // hole position, uv (y-up)
   uniform float uRh;            // shadow radius, fraction of screen height
+  uniform float uDisk;          // disk brightness: ignition on load, dims while reading
   uniform sampler2D uSky;
   out vec4 outColor;
 
@@ -282,7 +282,7 @@
         bg+=texture(uSky,suv).rgb*toward;
       }
     }
-    vec3 col=bg*trans+(vec3(1.0)-exp(-emitc*EXPOSURE));
+    vec3 col=bg*mix(1.0,trans,uDisk)+(vec3(1.0)-exp(-emitc*EXPOSURE*uDisk));
     outColor=vec4(col,1.0);
   }`;
 
@@ -293,63 +293,104 @@
   }`;
 
   (() => {
+    const root = document.documentElement;
     const glCanvas = document.getElementById('gl') as HTMLCanvasElement;
-    const reduced = Sky.reduced;
+    const paused = () => root.dataset.motion === 'paused';
+    // Particles step once per frame, so a 120 Hz display ran them at double
+    // speed. Hold everything to 60 fps: same look everywhere, less battery.
+    const MIN_FRAME = 1000 / 64;
 
     /* Fallback: no WebGL2, OR any WebGL/shader failure on quirky GPUs/drivers
        (compile/link error, context loss) → show the animated ion sky alone
        instead of a blank background. Compatibility hardening: never leave the
        hero empty just because the geodesic shader couldn't start. */
+    let fellBack = false;
     function ionSkyFallback() {
+      if (fellBack) return;
+      fellBack = true;
+      glCanvas.style.display = 'none';
       Sky.canvas.style.display = 'block';
       Sky.resize();
-      if (reduced) { Sky.draw(false); return; }
-      (function loop() { Sky.draw(true); requestAnimationFrame(loop); })();
+      Sky.draw(false);
+      addEventListener('resize', () => { Sky.resize(); Sky.draw(false); });
+      let last = 0;
+      (function loop(now: number) {
+        requestAnimationFrame(loop);
+        if (document.hidden || paused() || now - last < MIN_FRAME) return;
+        last = now;
+        Sky.draw(true);
+      })(0);
     }
 
     const gl = glCanvas.getContext('webgl2', { antialias: false });
     if (!gl) { ionSkyFallback(); return; }
+    let raf = 0;
+    glCanvas.addEventListener('webglcontextlost', () => { cancelAnimationFrame(raf); ionSkyFallback(); });
 
     try {
 
     function compile(type: number, src: string) {
       const s = gl!.createShader(type)!;
       gl!.shaderSource(s, src); gl!.compileShader(s);
-      if (!gl!.getShaderParameter(s, gl!.COMPILE_STATUS))
-        throw new Error(gl!.getShaderInfoLog(s) || 'shader compile failed');
       return s;
     }
     const prog = gl.createProgram()!;
-    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+    const vs = compile(gl.VERTEX_SHADER, VERT);
+    const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
     gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
-      throw new Error(gl.getProgramInfoLog(prog) || 'program link failed');
-    gl.useProgram(prog);
 
-    const uRes = gl.getUniformLocation(prog, 'uRes');
-    const uTime = gl.getUniformLocation(prog, 'uTime');
-    const uCenter = gl.getUniformLocation(prog, 'uCenter');
-    const uRh = gl.getUniformLocation(prog, 'uRh');
+    /* The geodesic shader is big enough that a synchronous compile freezes the
+       page for a moment on phones, right when it should be responding. Where
+       the driver supports it, poll for completion instead of blocking. */
+    const parallel = gl.getExtension('KHR_parallel_shader_compile');
+    (function whenLinked() {
+      if (parallel && !gl!.getProgramParameter(prog, parallel.COMPLETION_STATUS_KHR)) {
+        setTimeout(whenLinked, 30);
+        return;
+      }
+      try { start(); }
+      catch (err) {
+        console.warn('[GeodesicField] WebGL2 black hole unavailable, falling back to ion sky:', err);
+        ionSkyFallback();
+      }
+    })();
 
-    const tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.uniform1i(gl.getUniformLocation(prog, 'uSky'), 0);
+    function start() {
+    if (!gl!.getProgramParameter(prog, gl!.LINK_STATUS))
+      throw new Error(gl!.getProgramInfoLog(prog) || gl!.getShaderInfoLog(fs) || 'program link failed');
+    gl!.useProgram(prog);
 
-    let w: number, h: number, dpr: number, texW = 0, texH = 0;
+    const uRes = gl!.getUniformLocation(prog, 'uRes');
+    const uTime = gl!.getUniformLocation(prog, 'uTime');
+    const uCenter = gl!.getUniformLocation(prog, 'uCenter');
+    const uRh = gl!.getUniformLocation(prog, 'uRh');
+    const uDisk = gl!.getUniformLocation(prog, 'uDisk');
+
+    const tex = gl!.createTexture();
+    gl!.bindTexture(gl!.TEXTURE_2D, tex);
+    gl!.pixelStorei(gl!.UNPACK_FLIP_Y_WEBGL, true);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE);
+    gl!.uniform1i(gl!.getUniformLocation(prog, 'uSky'), 0);
+
+    let w = 0, h = 0, texW = 0, texH = 0;
     /* roam box: the WHOLE hole wanders the right side of the screen (y-up uv).
        mid = box centre, amp = half-extent per axis. With DRIFT=.26 the
        dominant x period is ~65 s and y ~45 s — clearly drifting, never rushed,
        and the incommensurate frequencies keep the path irregular. */
     const roam = { midX: .74, midY: .60, ampX: .14, ampY: .24 };
+    /* While reading, the hole backs off to the margin beside the content column
+       and its disk dims, so body text never has to compete with it. */
+    const quiet = { midX: .96, midY: .5, ampX: .015, ampY: .28 };
+    const QUIET_DISK = .26, QUIET_SIZE = .72;
     const DRIFT = .26;
     const par = { x: 0, y: 0, tx: 0, ty: 0 };
-    let raf: number;
+    let holeR = .026;
+    let closingPeak = 1;   // phones: contact sits under the skills list, stay back
 
     /* unit Lissajous wander (from ghostty-blackhole): 2+2 incommensurate
        sines per axis — the path never visibly repeats, so the motion reads
@@ -361,11 +402,19 @@
       ];
     }
 
-    function resize() {
-      dpr = Math.min(devicePixelRatio || 1, 1.5);   // geodesics are expensive — cap dpr
-      w = innerWidth; h = innerHeight;
-      glCanvas.width = w * dpr; glCanvas.height = h * dpr;
+    /* Adaptive resolution: if a device can't hold ~40 fps, render fewer pixels
+       before it starts to stutter. Only ever steps down within a visit. */
+    const QUALITY = [1, .72, .5];
+    let tier = 0;
+    function sizeGl() {
+      // geodesics are expensive — cap dpr
+      const dpr = Math.min(devicePixelRatio || 1, 1.5) * QUALITY[tier];
+      glCanvas.width = Math.floor(w * dpr); glCanvas.height = Math.floor(h * dpr);
       gl!.viewport(0, 0, glCanvas.width, glCanvas.height);
+    }
+    function resize() {
+      w = innerWidth; h = innerHeight;
+      sizeGl();
       Sky.resize();
       const mobile = w < 760;
       if (mobile) {           // narrow screens: upper-right, smaller box
@@ -374,8 +423,12 @@
         roam.midX = .74; roam.midY = .60; roam.ampX = .14; roam.ampY = .24;
       }
       holeR = mobile ? .030 : .026;   // wispy blazar disk spans ~1/3 viewport height
+      // just past the right edge of the 1080px content column
+      // (on a phone the column is the screen, so it goes most of the way off it)
+      quiet.midX = (w + Math.min(w, 1080) - 56) / 2 / w + (mobile ? .2 : .1);
+      if (!mobile) quiet.midX = Math.min(1.03, quiet.midX);
+      closingPeak = mobile ? .55 : 1;
     }
-    let holeR = .026;
 
     function uploadSky() {
       gl!.bindTexture(gl!.TEXTURE_2D, tex);
@@ -387,43 +440,113 @@
       }
     }
 
-    function render(timeSec: number) {
+    /* ---- scroll focus: 1 at the hero and the contact section, 0 in between.
+       The page opens and closes on the black hole at full power. Section
+       positions are cached, so a frame only ever reads scrollY. ---- */
+    const smooth = (x: number) => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
+    const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+    let heroEnd = 1, closeStart = 1e9, closeEnd = 1e9 + 1;
+    function measure() {
+      const hero = document.querySelector('.hero') as HTMLElement | null;
+      const contact = document.getElementById('contact');
+      if (hero) heroEnd = hero.offsetTop + hero.offsetHeight;
+      closeEnd = Math.max(1, root.scrollHeight - innerHeight);
+      if (contact) {
+        closeStart = contact.getBoundingClientRect().top + scrollY - innerHeight;
+        if (closeStart >= closeEnd) closeStart = closeEnd - 1;
+      }
+    }
+    function targetFocus() {
+      const y = scrollY;
+      const opening = 1 - smooth((y - heroEnd * .15) / (heroEnd * .6));
+      const closing = closingPeak * smooth((y - closeStart) / (closeEnd - closeStart));
+      return Math.max(opening, closing);
+    }
+
+    let focus = 0, ignite = 0, igniteAt = 0, clock = 0;
+    function render() {
       par.x += (par.tx - par.x) * .04;
       par.y += (par.ty - par.y) * .04;
-      const [lx, ly] = lissa(timeSec * DRIFT);
-      const cx = roam.midX + lx * roam.ampX + par.x;
-      const cy = roam.midY + ly * roam.ampY + par.y;
+      const [lx, ly] = lissa(clock * DRIFT);
+      const cx = mix(quiet.midX, roam.midX, focus) + lx * mix(quiet.ampX, roam.ampX, focus) + par.x;
+      const cy = mix(quiet.midY, roam.midY, focus) + ly * mix(quiet.ampY, roam.ampY, focus) + par.y;
       gl!.uniform2f(uRes, glCanvas.width, glCanvas.height);
-      gl!.uniform1f(uTime, timeSec);
+      gl!.uniform1f(uTime, clock);
       gl!.uniform2f(uCenter, cx, cy);
-      gl!.uniform1f(uRh, holeR);
+      gl!.uniform1f(uRh, holeR * mix(QUIET_SIZE, 1, focus));
+      gl!.uniform1f(uDisk, ignite * mix(QUIET_DISK, 1, focus));
       gl!.drawArrays(gl!.TRIANGLES, 0, 3);
     }
 
+    let lastFrame = 0, perfAcc = 0, perfN = 0, perfFrom = 0;
+    function schedule() {
+      if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
+    }
     function frame(now: number) {
-      Sky.draw(true);
-      uploadSky();
-      render(now / 1000);
-      raf = requestAnimationFrame(frame);
+      raf = 0;
+      if (now - lastFrame < MIN_FRAME) { schedule(); return; }
+      const dt = Math.min(now - lastFrame, 100);
+      lastFrame = now;
+
+      const still = paused();
+      if (!still) {
+        clock += dt / 1000;
+        Sky.draw(true);
+        uploadSky();
+      }
+      const target = targetFocus();
+      focus += (target - focus) * (1 - Math.exp(-dt / 240));
+      // disk ignites over 1.5 s, ease-out, in step with the hero's boot sequence
+      const k = Math.min(1, (now - igniteAt) / 1500);
+      ignite = still ? 1 : 1 - (1 - k) * (1 - k) * (1 - k);
+      render();
+
+      if (!still && now > perfFrom) {
+        perfAcc += dt; perfN++;
+        if (perfN >= 45) {
+          if (perfAcc / perfN > 25 && tier < QUALITY.length - 1) { tier++; sizeGl(); perfFrom = now + 1500; }
+          perfAcc = 0; perfN = 0;
+        }
+      }
+      // A paused page still needs frames while the hole settles after a scroll.
+      if (!still || Math.abs(target - focus) > .002) schedule();
     }
 
     addEventListener('resize', () => {
-      resize();
-      if (reduced) { Sky.draw(false); uploadSky(); render(0); }
+      // A phone's address bar collapsing is a resize too, but regenerating the
+      // whole particle field for it made the sky jump mid-scroll.
+      const barOnly = innerWidth === w && Math.abs(innerHeight - h) < 140;
+      if (!barOnly) resize();
+      measure();
+      schedule();
     });
+    new ResizeObserver(() => measure()).observe(document.body);
+    addEventListener('scroll', () => { if (paused()) schedule(); }, { passive: true });
     addEventListener('pointermove', e => {
       par.tx = (e.clientX / w - .5) * -.022;
       par.ty = (e.clientY / h - .5) * .016;   // y-up: invert
     });
     document.addEventListener('visibilitychange', () => {
-      if (reduced) return;
-      if (document.hidden) cancelAnimationFrame(raf);
-      else raf = requestAnimationFrame(frame);
+      if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+      else { lastFrame = performance.now() - MIN_FRAME; schedule(); }
+    });
+    document.addEventListener('motionchange', () => {
+      lastFrame = performance.now() - MIN_FRAME;
+      schedule();
     });
 
     resize();
-    if (reduced) { Sky.draw(false); uploadSky(); render(0); }
-    else raf = requestAnimationFrame(frame);
+    measure();
+    focus = targetFocus();
+    Sky.draw(false);
+    uploadSky();
+    igniteAt = performance.now();
+    perfFrom = igniteAt + 2500;   // don't judge the device during page load
+    lastFrame = igniteAt - MIN_FRAME;
+    render();                     // first frame in hand before it fades up
+    glCanvas.classList.add('ready');
+    schedule();
+    }
 
     } catch (err) {
       console.warn('[GeodesicField] WebGL2 black hole unavailable, falling back to ion sky:', err);

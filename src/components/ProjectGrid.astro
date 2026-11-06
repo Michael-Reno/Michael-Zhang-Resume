@@ -28,7 +28,7 @@ const sorted = [...items].sort((a, b) => b.data.order - a.data.order);
           <h3>
             {p.data.url ? (
               <a href={p.data.url} target="_blank" rel="noopener">
-                {p.data.name} ↗
+                {p.data.name} <span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
               </a>
             ) : (
               p.data.name

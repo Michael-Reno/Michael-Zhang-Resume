@@ -1,47 +1,81 @@
 ---
 // Primary navigation — brand + anchor links, mono/terminal styling.
-// Mobile: compact square hamburger that morphs into ✕ on open.
+// Sticky: slides away while reading down, returns on scroll up, marks the current
+// section (src/scripts/scroll-motion.ts). Mobile: square hamburger morphing into ✕.
+// Also holds the pause control for the page's endless motion (WCAG 2.2.2).
 ---
 
-<nav aria-label="Primary">
+<nav class="site-nav" aria-label="Primary">
   <a class="brand" href="#top"><b>~/</b>michael-zhang</a>
-  <div class="nav-links" id="nav-links" role="list">
-    <a href="#experience" role="listitem">experience</a>
-    <a href="#projects" role="listitem">projects</a>
-    <a href="#ai-lab" role="listitem">ai-lab</a>
-    <a href="#contact" role="listitem">contact</a>
+  <div class="nav-links" id="nav-links">
+    <a href="#experience">experience</a>
+    <a href="#projects">projects</a>
+    <a href="#ai-lab">ai-lab</a>
+    <a href="#contact">contact</a>
   </div>
-  <button
-    class="nav-toggle"
-    id="nav-toggle"
-    aria-label="Open navigation menu"
-    aria-expanded="false"
-    aria-controls="nav-links"
-  >
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
+  <div class="nav-actions">
+    <button class="icon-btn motion-toggle" id="motion-toggle" type="button" aria-label="Pause background animation">
+      <svg class="icon-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="1" /><rect x="9.5" y="2.5" width="3" height="11" rx="1" /></svg>
+      <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.9c0-.8.9-1.3 1.6-.8l7 5.1c.5.4.5 1.2 0 1.6l-7 5.1c-.7.5-1.6 0-1.6-.8Z" /></svg>
+    </button>
+    <button
+      class="icon-btn nav-toggle"
+      id="nav-toggle"
+      type="button"
+      aria-label="Open navigation menu"
+      aria-expanded="false"
+      aria-controls="nav-links"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
 </nav>
 
 <script>
   const toggle = document.getElementById('nav-toggle') as HTMLButtonElement | null;
-  const links  = document.getElementById('nav-links');
+  const links = document.getElementById('nav-links');
 
-  toggle?.addEventListener('click', () => {
-    const open = links?.classList.toggle('open') ?? false;
-    toggle.classList.toggle('open', open);
-    toggle.setAttribute('aria-expanded', String(open));
-    toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  function setOpen(open: boolean) {
+    links?.classList.toggle('open', open);
+    toggle?.classList.toggle('open', open);
+    toggle?.setAttribute('aria-expanded', String(open));
+    toggle?.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  }
+
+  toggle?.addEventListener('click', () => setOpen(!links?.classList.contains('open')));
+  // Close when any anchor is tapped (single-page site), on Escape, or on a tap elsewhere.
+  links?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && links?.classList.contains('open')) {
+      setOpen(false);
+      toggle?.focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (links?.classList.contains('open') && !(e.target as Element).closest('.site-nav')) setOpen(false);
   });
 
-  // Close when any anchor is tapped (single-page site).
-  links?.querySelectorAll('a').forEach((a) => {
-    a.addEventListener('click', () => {
-      links.classList.remove('open');
-      toggle?.classList.remove('open');
-      toggle?.setAttribute('aria-expanded', 'false');
-      toggle?.setAttribute('aria-label', 'Open navigation menu');
-    });
+  /* ---------------- pause control ---------------- */
+  const root = document.documentElement;
+  const motionBtn = document.getElementById('motion-toggle') as HTMLButtonElement | null;
+  function syncMotion() {
+    const paused = root.dataset.motion === 'paused';
+    const label = paused ? 'Play background animation' : 'Pause background animation';
+    motionBtn?.setAttribute('aria-label', label);
+    motionBtn?.setAttribute('title', label);
+  }
+  motionBtn?.addEventListener('click', () => {
+    const paused = root.dataset.motion !== 'paused';
+    if (paused) root.dataset.motion = 'paused';
+    else delete root.dataset.motion;
+    try {
+      if (paused) localStorage.setItem('motion', 'paused');
+      else localStorage.removeItem('motion');
+    } catch { /* private mode: applies to this visit only */ }
+    syncMotion();
+    document.dispatchEvent(new CustomEvent('motionchange'));
   });
+  syncMotion();
 </script>

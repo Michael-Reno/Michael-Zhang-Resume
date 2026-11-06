@@ -12,23 +12,26 @@ const lastName  = nameParts[nameParts.length - 1];
 ---
 
 <header class="hero">
-  <p class="eyebrow"><span class="prompt">$</span> whoami <span class="caret"></span></p>
+  <p class="eyebrow"><span class="prompt">$</span> <span class="cmd">whoami</span> <span class="caret" aria-hidden="true"></span></p>
   <h1><span class="ion-name">{firstName} <span class="ion-last">{lastName}</span></span></h1>
-  <p class="role-line"><span class="typed tcaret" id="typed"></span></p>
+  <p class="role-line">
+    <span class="sr-only">{typedRoles.join(', ')}</span>
+    <span class="typed tcaret idle" id="typed" aria-hidden="true">{typedRoles[0]}</span>
+  </p>
   <p class="statement">
     Ten years building <strong>government digital services</strong> across Drupal,
     React and GraphQL — now folding <strong>AI-augmented engineering</strong> into
     every stage of delivery. NV1-cleared, accessibility-obsessed, Brisbane-based.
   </p>
   <div class="badges">
-    <span class="badge"><i>◆</i>NV1 Security Clearance</span>
-    <span class="badge"><i>◆</i>10+ yrs AU Government</span>
-    <span class="badge"><i>◆</i>WCAG 2.1 AA</span>
-    <span class="badge"><i>◆</i>EN / 中文</span>
+    <span class="badge"><i aria-hidden="true">◆</i>NV1 Security Clearance</span>
+    <span class="badge"><i aria-hidden="true">◆</i>10+ yrs AU Government</span>
+    <span class="badge"><i aria-hidden="true">◆</i>WCAG 2.1 AA</span>
+    <span class="badge"><i aria-hidden="true">◆</i>EN / 中文</span>
   </div>
   <div class="cta-row">
     <a class="btn btn-primary" href="#experience">View experience</a>
-    <a class="btn btn-ghost" href="/resume.pdf">Download résumé →</a>
+    <a class="btn btn-ghost" href="/resume.pdf" download="Michael-Zhang-Resume.pdf">Download résumé <span class="arrow" aria-hidden="true">→</span></a>
   </div>
 </header>
 
@@ -37,21 +40,39 @@ const lastName  = nameParts[nameParts.length - 1];
   (() => {
     const el = document.getElementById('typed');
     if (!el) return;
-    // Typed-role animation is intentionally always on — we do NOT honour
-    // prefers-reduced-motion (owner's decision: consistent look across machines
-    // matters more than the reduced-motion preference for this personal site).
-    const reduced = false;
+    // Intentionally does NOT follow prefers-reduced-motion (owner's decision:
+    // consistent look across machines). The nav's pause button stops it instead.
+    const root = document.documentElement;
+    const paused = () => root.dataset.motion === 'paused';
     const roles = typedRoles;
-    if (reduced) { el.textContent = roles[0]; el.classList.remove('tcaret'); return; }
-    let r = 0, i = 0, deleting = false;
-    (function tick() {
+    let r = 0, i = 0, deleting = false, timer = 0;
+    function tick() {
+      if (paused()) {
+        // Settle on the whole current role, cursor at rest.
+        el.textContent = roles[r];
+        i = roles[r].length;
+        deleting = false;
+        el.classList.add('idle');
+        return;
+      }
       const word = roles[r];
       el.textContent = word.slice(0, i);
       let delay = deleting ? 28 : 52;
-      if (!deleting && i === word.length) { delay = 2100; deleting = true; }
+      const atEnd = !deleting && i === word.length;
+      el.classList.toggle('idle', atEnd);
+      if (atEnd) { delay = 2100; deleting = true; }
       else if (deleting && i === 0) { deleting = false; r = (r + 1) % roles.length; delay = 350; }
       i += deleting ? -1 : 1;
-      setTimeout(tick, delay);
-    })();
+      timer = setTimeout(tick, delay);
+    }
+    document.addEventListener('motionchange', () => { clearTimeout(timer); tick(); });
+    // Output of `whoami`: starts as the name finishes printing.
+    if (paused()) tick();
+    else {
+      el.textContent = '';
+      el.classList.remove('idle');
+      el.classList.add('booting');
+      timer = setTimeout(() => { el.classList.remove('booting'); tick(); }, 620);
+    }
   })();
 </script>

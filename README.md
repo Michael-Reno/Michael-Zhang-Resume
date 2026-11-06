@@ -48,6 +48,16 @@ a content file doesn't match.
 tokens, hero layout, and both background scripts are ported from it verbatim into Astro
 components. **Do not redesign or simplify the shader** — port changes from the prototype.
 
+## Motion
+
+One authored moment (the hero boot sequence) plus quiet supporting states: scroll focus on
+the black hole, the experience rail, a sticky nav and pointer-lit card edges. Everything
+is readable with scripting off, and the nav's pause button stops every endless loop. Where
+each piece lives and why is in `.claude/memory/motion-system.md`.
+
+The copy-email button and the card edge light are adapted from
+[Lucian UX/UI Prompt](https://lucianlabs.dev/uxui-prompt/) #008 and #228 (MIT).
+
 ## Deployment (Vercel)
 
 1. Push to GitHub (`https://github.com/Michael-Reno/Michael-Zhang-Resume`).

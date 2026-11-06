@@ -1,22 +1,33 @@
 @import 'tailwindcss';
 
 /* =====================================================================
-   Design tokens + base — ported verbatim from design/hero-prototype.html.
-   Do not redesign; this is the approved visual direction.
+   Design tokens + base — ported from design/hero-prototype.html.
+   The visual direction is approved; refine it, do not redesign it.
    Fonts are self-hosted via @fontsource (imported in Base.astro), not the
    Google Fonts CDN.
    ===================================================================== */
 :root {
+  color-scheme: dark;
   --void: #04060e;
   --surface: #0b101e;
   --line: rgba(160, 180, 225, 0.1);
+  --line-hot: rgba(77, 227, 255, 0.45);
   --ion: #4de3ff;
+  --ion-ink: #04121a;
   --violet: #9d7bff;
   --text: #e8edf8;
   --muted: #8b95ae;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
   --display: 'JetBrains Mono', ui-monospace, monospace;
   --body: 'Geist Sans', 'Geist', 'Inter', system-ui, sans-serif;
+
+  /* motion: one arrival curve, one small overshoot for confirmations */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --fast: 0.15s;
+  --base: 0.25s;
+  --slow: 0.55s;
+  --nav-h: 64px;
 }
 * {
   margin: 0;
@@ -24,17 +35,65 @@
   box-sizing: border-box;
 }
 html {
-  scroll-behavior: smooth;
+  overflow-x: clip;
+  scroll-padding-top: calc(var(--nav-h) + 12px);
+  scrollbar-color: rgba(139, 149, 174, 0.35) var(--void);
+  -webkit-tap-highlight-color: rgba(77, 227, 255, 0.15);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 body {
   background: var(--void);
   color: var(--text);
   font-family: var(--body);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
+  touch-action: manipulation;
 }
 ::selection {
   background: rgba(77, 227, 255, 0.25);
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+main:focus {
+  outline: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* keyboard users can jump the nav; invisible until focused */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ion-ink);
+  background: var(--ion);
+  border-radius: 8px;
+  padding: 11px 16px;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible {
+  transform: none;
 }
 
 #gl,
@@ -49,6 +108,15 @@ body {
 #sky {
   display: none;
 } /* offscreen sky; shown only as no-WebGL fallback */
+#gl {
+  /* The first frame arrives once the shader finishes compiling off the main
+     thread; fade it up instead of popping it in. */
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+#gl.ready {
+  opacity: 1;
+}
 
 .wrap {
   position: relative;
@@ -58,11 +126,37 @@ body {
   padding: 0 28px;
 }
 
-nav {
+/* ── Nav: stays in reach, gets out of the way while reading ───────── */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--nav-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 26px 0;
+  gap: 20px;
+  transition: transform var(--base) ease;
+}
+.site-nav::before {
+  /* full-bleed bar behind the 1080px column; only once the page has scrolled */
+  content: '';
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: rgba(4, 6, 14, 0.84);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  transition: opacity var(--base) ease;
+  pointer-events: none;
+}
+.site-nav.stuck::before {
+  opacity: 1;
+}
+.site-nav.nav-hidden:not(:focus-within) {
+  transform: translateY(-100%);
 }
 .brand {
   font-family: var(--mono);
@@ -85,8 +179,10 @@ nav {
   font-weight: 500;
 }
 .nav-links {
+  position: relative;
   display: flex;
   gap: 28px;
+  margin-left: auto;
 }
 .nav-links a {
   font-family: var(--mono);
@@ -94,10 +190,7 @@ nav {
   color: var(--text);
   text-decoration: none;
   letter-spacing: 0.04em;
-  transition: color 0.2s;
-  /* Stacked dark rim + glow: keeps the floating links legible even when the
-     roaming black hole's bright accretion disk passes behind them. The tight
-     near-opaque layers form a dark outline; the wider layers soften it. */
+  transition: color var(--fast) ease;
   text-shadow:
     0 0 1px rgba(4, 6, 14, 0.98),
     0 0 2px rgba(4, 6, 14, 0.98),
@@ -106,8 +199,30 @@ nav {
     0 1px 12px rgba(4, 6, 14, 0.82);
 }
 .nav-links a:hover,
-.nav-links a:focus-visible {
+.nav-links a:focus-visible,
+.nav-links a[aria-current] {
   color: var(--ion);
+}
+/* one marker that slides to the section being read */
+.nav-links::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -7px;
+  width: 1px;
+  height: 2px;
+  background: var(--ion);
+  transform-origin: 0 50%;
+  transform: translateX(var(--ix, 0)) scaleX(var(--iw, 0));
+  opacity: var(--io, 0);
+  transition: transform 0.4s var(--ease-out), opacity var(--base) ease;
+  pointer-events: none;
+}
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 a:focus-visible,
 button:focus-visible {
@@ -116,13 +231,63 @@ button:focus-visible {
   border-radius: 2px;
 }
 
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: border-color var(--fast) ease, color var(--fast) ease, transform var(--fast) ease;
+}
+.icon-btn::after {
+  /* 44px touch target around the 36px visual */
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+.icon-btn:hover {
+  color: var(--ion);
+  border-color: var(--line-hot);
+}
+.icon-btn:active {
+  transform: scale(0.94);
+}
+.motion-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.motion-toggle .icon-play {
+  display: none;
+}
+[data-motion='paused'] .motion-toggle .icon-play {
+  display: block;
+}
+[data-motion='paused'] .motion-toggle .icon-pause {
+  display: none;
+}
+
 .hero {
-  min-height: calc(100vh - 90px);
+  min-height: calc(100vh - var(--nav-h));
+  min-height: calc(100svh - var(--nav-h));
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 40px 0 80px;
 }
+
+/* ── Hero boot sequence ────────────────────────────────────────────
+   One authored moment: `whoami` is typed, the name prints as its output,
+   the role starts typing and the rest of the output follows while the
+   black hole's disk ignites (GeodesicField). Everything is CSS, so it runs
+   without JavaScript, and the buttons are live from the first frame. */
 .eyebrow {
   font-family: var(--mono);
   font-size: 13px;
@@ -131,36 +296,63 @@ button:focus-visible {
   align-items: center;
   gap: 10px;
   margin-bottom: 26px;
-  opacity: 0;
-  animation: rise 0.7s ease 0.1s forwards;
 }
 .eyebrow .prompt {
   color: var(--ion);
+}
+.eyebrow .cmd {
+  display: inline-block;
+  animation: cmd-type 0.28s steps(6) 0.12s both;
 }
 .eyebrow .caret {
   display: inline-block;
   width: 8px;
   height: 16px;
   background: var(--ion);
-  animation: blink 1.1s steps(1) infinite;
   vertical-align: middle;
+  /* runs along with the command, then hands over to the role line's cursor */
+  animation:
+    caret-run 0.28s steps(6) 0.12s both,
+    caret-off 0.01s linear 0.5s forwards;
+}
+@keyframes cmd-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes caret-run {
+  from {
+    transform: translateX(calc(-6ch - 10px));
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes caret-off {
+  to {
+    opacity: 0;
+  }
 }
 h1 {
   font-family: var(--display);
-  font-size: clamp(36px, 6.6vw, 76px);
+  font-size: clamp(35px, 11vw, 76px);
   font-weight: 800;
   line-height: 1.06;
   letter-spacing: -0.045em;
   color: var(--text);
   opacity: 0;
-  animation: rise 0.7s ease 0.22s forwards;
+  animation: rise var(--slow) var(--ease-out) 0.44s forwards;
 }
 h1 .ion-last {
   color: var(--ion);
 }
 /* Progressive enhancement: gradient where background-clip:text is supported.
-   animation:none is mandatory — any opacity/transform animation on the element
-   creates a GPU compositing layer that breaks background-clip on Chrome/Mac.
+   No opacity/transform animation on the h1 — it creates a GPU compositing layer
+   that breaks background-clip on Chrome/Mac. The print-out wipe below animates
+   clip-path, which paints on the main thread and stays out of that path.
    isolation:isolate prevents sibling-animation compositing squash from pulling
    h1 into a shared GPU layer where background-clip:text also breaks. */
 @supports (-webkit-background-clip: text) or (background-clip: text) {
@@ -175,15 +367,24 @@ h1 .ion-last {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    animation: name-print 0.6s var(--ease-out) 0.44s both;
   }
   h1 .ion-last {
     color: unset;
   }
 }
+@keyframes name-print {
+  from {
+    clip-path: inset(-15% 100% -15% 0);
+  }
+  to {
+    clip-path: inset(-15% -3% -15% 0);
+  }
+}
 /* Fallback when JS detects gradient text is unreliable (software rendering etc.) */
 html.no-gradient-text h1 {
   opacity: 0;
-  animation: rise 0.7s ease 0.22s forwards;
+  animation: rise var(--slow) var(--ease-out) 0.44s forwards;
 }
 html.no-gradient-text h1 .ion-name {
   display: inline;
@@ -191,6 +392,7 @@ html.no-gradient-text h1 .ion-name {
   -webkit-background-clip: unset;
   background-clip: unset;
   -webkit-text-fill-color: unset;
+  animation: none;
 }
 html.no-gradient-text h1 .ion-last {
   color: var(--text);
@@ -199,18 +401,29 @@ html.no-gradient-text h1 .ion-last {
   margin-top: 22px;
   font-family: var(--mono);
   font-size: clamp(14px, 2vw, 17px);
+  line-height: 1.6;
   color: var(--muted);
   min-height: 1.6em;
-  opacity: 0;
-  animation: rise 0.7s ease 0.34s forwards;
 }
 .role-line .typed {
   color: var(--text);
 }
-.role-line .tcaret {
-  border-right: 2px solid var(--ion);
-  padding-right: 2px;
+/* the cursor is its own box so the text never blinks; solid while typing,
+   blinking only while it waits */
+.role-line .tcaret::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  background: var(--ion);
+  vertical-align: -0.16em;
+}
+.role-line .tcaret.idle::after {
   animation: blink 1.1s steps(1) infinite;
+}
+.role-line .tcaret.booting::after {
+  opacity: 0;
 }
 .statement {
   margin-top: 26px;
@@ -218,8 +431,7 @@ html.no-gradient-text h1 .ion-last {
   font-size: 16.5px;
   line-height: 1.75;
   color: var(--muted);
-  opacity: 0;
-  animation: rise 0.7s ease 0.46s forwards;
+  animation: rise var(--slow) var(--ease-out) 0.62s both;
 }
 .statement strong {
   color: var(--text);
@@ -231,8 +443,7 @@ html.no-gradient-text h1 .ion-last {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 34px;
-  opacity: 0;
-  animation: rise 0.7s ease 0.58s forwards;
+  animation: rise var(--slow) var(--ease-out) 0.72s both;
 }
 .badge {
   font-family: var(--mono);
@@ -257,8 +468,7 @@ html.no-gradient-text h1 .ion-last {
   gap: 14px;
   margin-top: 40px;
   flex-wrap: wrap;
-  opacity: 0;
-  animation: rise 0.7s ease 0.7s forwards;
+  animation: rise var(--slow) var(--ease-out) 0.82s both;
 }
 .btn {
   font-family: var(--mono);
@@ -267,11 +477,11 @@ html.no-gradient-text h1 .ion-last {
   padding: 13px 24px;
   border-radius: 8px;
   text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  transition: transform var(--fast) ease, box-shadow var(--base) ease, border-color var(--fast) ease;
   border: 1px solid transparent;
 }
 .btn-primary {
-  color: #04121a;
+  color: var(--ion-ink);
   background: var(--ion);
   font-weight: 500;
 }
@@ -279,13 +489,24 @@ html.no-gradient-text h1 .ion-last {
   transform: translateY(-2px);
   box-shadow: 0 6px 30px rgba(77, 227, 255, 0.35);
 }
+.btn:active,
+.btn-primary:active {
+  transform: scale(0.97);
+}
 .btn-ghost {
   color: var(--text);
   border-color: var(--line);
   background: rgba(11, 16, 30, 0.5);
 }
 .btn-ghost:hover {
-  border-color: rgba(77, 227, 255, 0.45);
+  border-color: var(--line-hot);
+}
+.btn .arrow {
+  display: inline-block;
+  transition: transform var(--base) var(--ease-out);
+}
+.btn:hover .arrow {
+  transform: translateX(3px);
 }
 
 .strip {
@@ -295,15 +516,13 @@ html.no-gradient-text h1 .ion-last {
   margin-bottom: 90px;
   font-family: var(--mono);
   font-size: 12.5px;
+  line-height: 1.5;
   color: var(--muted);
+  /* every entry stays visible: wrapped rows instead of a sideways scroller that
+     hid the last ones with no sign they were there */
   display: flex;
-  gap: 34px;
-  overflow-x: auto;
-  white-space: nowrap;
-  scrollbar-width: none;
-}
-.strip::-webkit-scrollbar {
-  display: none;
+  flex-wrap: wrap;
+  gap: 8px 34px;
 }
 .strip span b {
   color: var(--ion);
@@ -316,8 +535,9 @@ section.preview {
 }
 .sec-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 18px;
+  gap: 6px 18px;
   margin-bottom: 36px;
 }
 .sec-head .tag {
@@ -332,9 +552,40 @@ section.preview {
   font-weight: 700;
   letter-spacing: -0.03em;
 }
+
+/* ── Experience: a rail that lights up as you read ─────────────────── */
 .timeline {
+  position: relative;
   border-left: 1px solid var(--line);
   margin-left: 6px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  transform-origin: top;
+  transform: scaleY(var(--tl, 0));
+  background: linear-gradient(var(--ion), var(--violet));
+  box-shadow: 0 0 8px rgba(77, 227, 255, 0.7);
+  pointer-events: none;
+}
+/* the leading spark at the tip of the light */
+.timeline::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text);
+  box-shadow: 0 0 10px 2px rgba(77, 227, 255, 0.85);
+  transform: translateY(var(--tip, 0));
+  opacity: var(--tip-o, 0);
+  pointer-events: none;
 }
 .t-item {
   position: relative;
@@ -343,20 +594,31 @@ section.preview {
 .t-item::before {
   content: '';
   position: absolute;
+  z-index: 1;
   left: -5px;
   top: 7px;
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--void);
-  border: 2px solid var(--ion);
+  border: 2px solid rgba(139, 149, 174, 0.45);
+  transition: border-color var(--base) ease, box-shadow var(--slow) ease, transform 0.45s var(--ease-out);
+}
+/* without the script every node is simply lit */
+html:not(.fx) .t-item::before,
+.t-item.lit::before {
+  border-color: var(--ion);
   box-shadow: 0 0 12px rgba(77, 227, 255, 0.5);
+}
+.t-item.lit::before {
+  transform: scale(1.15);
 }
 .t-item .when {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
 }
 .t-item h3 {
   font-family: var(--display);
@@ -382,12 +644,48 @@ section.preview {
   gap: 7px;
   margin-top: 12px;
 }
-.reveal {
+
+/* ── Scroll reveals. Everything is visible by default: the hidden start
+   state only exists under .fx, which the motion script adds. ───────── */
+.fx .reveal {
   opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.7s ease var(--d, 0ms), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
+  transform: translateY(14px);
+  transition: opacity var(--slow) ease var(--d, 0ms), transform 0.7s var(--ease-out) var(--d, 0ms);
 }
-.reveal.in {
+.fx .reveal.in {
+  opacity: 1;
+  transform: none;
+}
+/* timeline entries arrive when the light reaches their node; the node itself
+   stays on the rail so the shape of the career is visible ahead of time */
+.fx .t-item > * {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.45s ease, transform var(--slow) var(--ease-out);
+}
+.fx .t-item.seen > * {
+  opacity: 1;
+  transform: none;
+}
+/* section tags print like a command; the heading follows a beat later */
+.fx .reveal.reveal-head {
+  opacity: 1;
+  transform: none;
+}
+.fx .reveal-head .tag {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path calc(var(--chars, 12) * 18ms) steps(var(--chars, 12));
+}
+.fx .reveal-head h2 {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--slow) ease 0.14s, transform 0.7s var(--ease-out) 0.14s;
+}
+.fx .reveal-head.in .tag {
+  clip-path: inset(0 0 0 0);
+}
+.fx .reveal-head.in h2 {
   opacity: 1;
   transform: none;
 }
@@ -402,10 +700,15 @@ section.preview {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 18px;
 }
+/* four cards read as two rows of two, not three and an orphan */
+.grid:has(> :nth-child(4):last-child) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+}
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -415,12 +718,37 @@ section.preview {
   background: rgba(11, 16, 30, 0.45);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
-  transition: border-color 0.2s ease, transform 0.15s ease;
 }
-.card:hover,
+/* Pointer charge: the cursor already pulls the ion field behind the page, so
+   the same charge lights card edges as it passes, crossing the gaps between
+   them (script in src/scripts/scroll-motion.ts). */
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  opacity: var(--o, 0);
+}
+.card::before {
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(240px circle at var(--cx, -999px) var(--cy, -999px), var(--ion), rgba(157, 123, 255, 0.55) 45%, transparent 72%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.card::after {
+  inset: 0;
+  border-radius: 11px;
+  background: radial-gradient(300px circle at var(--cx, -999px) var(--cy, -999px), rgba(77, 227, 255, 0.07), transparent 65%);
+}
 .card:focus-within {
-  border-color: rgba(77, 227, 255, 0.35);
-  transform: translateY(-2px);
+  border-color: var(--line-hot);
 }
 .card .role {
   font-family: var(--mono);
@@ -438,9 +766,17 @@ section.preview {
 .card h3 a {
   color: var(--text);
   text-decoration: none;
+  transition: color var(--fast) ease;
 }
 .card h3 a:hover {
   color: var(--ion);
+}
+.card h3 a .ext {
+  display: inline-block;
+  transition: transform var(--base) var(--ease-out);
+}
+.card h3 a:hover .ext {
+  transform: translate(2px, -2px);
 }
 .card p {
   font-size: 14px;
@@ -502,6 +838,7 @@ section.preview {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   font-family: var(--mono);
   font-size: 13.5px;
   color: var(--text);
@@ -510,14 +847,110 @@ section.preview {
   border-radius: 10px;
   padding: 14px 20px;
   background: rgba(11, 16, 30, 0.5);
-  transition: border-color 0.2s ease, transform 0.15s ease;
+  transition: border-color var(--fast) ease, transform var(--fast) ease;
 }
 .contact-grid a:hover {
-  border-color: rgba(77, 227, 255, 0.45);
+  border-color: var(--line-hot);
   transform: translateY(-2px);
+}
+.contact-grid a:active {
+  transform: scale(0.98);
 }
 .contact-grid a .k {
   color: var(--ion);
+}
+.contact-grid a .v {
+  overflow-wrap: anywhere;
+}
+/* email + copy: a matched pair. Motion values from Lucian UX/UI #008 (MIT). */
+.contact-email {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.copy-btn {
+  position: relative;
+  flex: none;
+  align-self: stretch;
+  width: 48px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: rgba(11, 16, 30, 0.5);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--fast) ease, background-color 0.35s ease, color 0.35s ease, transform 0.45s var(--ease-spring);
+}
+.copy-btn[hidden] {
+  display: none;
+}
+.copy-btn:hover {
+  color: var(--ion);
+  border-color: var(--line-hot);
+}
+.copy-btn:active {
+  transform: scale(0.88);
+}
+.copy-btn svg {
+  grid-area: 1 / 1;
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity var(--base) ease, transform 0.5s var(--ease-spring);
+}
+.copy-btn .icon-ok {
+  opacity: 0;
+  transform: scale(0.4) rotate(-30deg);
+}
+.copy-btn .icon-ok path {
+  stroke-width: 2.6;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 0.4s ease 0.1s;
+}
+.contact-email.is-copied .copy-btn {
+  color: var(--ion-ink);
+  background: var(--ion);
+  border-color: var(--ion);
+}
+.contact-email.is-copied .icon-copy {
+  opacity: 0;
+  transform: scale(0.4) rotate(30deg);
+}
+.contact-email.is-copied .icon-ok {
+  opacity: 1;
+  transform: none;
+}
+.contact-email.is-copied .icon-ok path {
+  stroke-dashoffset: 0;
+}
+.copy-status {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--void);
+  background: var(--text);
+  border-radius: 7px;
+  padding: 6px 10px;
+  opacity: 0;
+  transform: translateY(6px) scale(0.9);
+  transform-origin: 90% 100%;
+  transition: opacity var(--base) ease, transform 0.5s var(--ease-spring);
+  pointer-events: none;
+}
+.contact-email.has-status .copy-status {
+  opacity: 1;
+  transform: none;
 }
 
 footer {
@@ -535,16 +968,12 @@ footer {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: none;
   }
-}
-@keyframes h1-rise {
-  from { opacity: 0; }
-  to   { opacity: 1; }
 }
 @keyframes blink {
   0%,
@@ -561,36 +990,24 @@ footer {
 .nav-toggle {
   display: none;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   gap: 5px;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
-}
-.nav-toggle:hover {
-  border-color: rgba(77, 227, 255, 0.5);
-  background: rgba(77, 227, 255, 0.06);
 }
 .nav-toggle span {
   display: block;
   width: 15px;
   height: 1.5px;
-  background: var(--muted);
+  background: currentColor;
   border-radius: 2px;
-  transition: transform 0.25s ease, opacity 0.2s ease, background 0.2s ease;
+  transition: transform var(--base) var(--ease-out), opacity var(--fast) ease;
   transform-origin: center;
 }
 /* open state — lines morph into ✕ */
+.nav-toggle.open {
+  color: var(--ion);
+}
 .nav-toggle.open span:nth-child(1) {
   transform: translateY(6.5px) rotate(45deg);
-  background: var(--ion);
 }
 .nav-toggle.open span:nth-child(2) {
   opacity: 0;
@@ -598,26 +1015,25 @@ footer {
 }
 .nav-toggle.open span:nth-child(3) {
   transform: translateY(-6.5px) rotate(-45deg);
-  background: var(--ion);
 }
 
 @media (max-width: 640px) {
-  nav {
-    position: relative;
-  }
   .nav-toggle {
-    display: flex;
+    display: inline-flex;
+  }
+  .nav-links::after {
+    display: none;
   }
   .nav-links {
-    /* hidden by default; toggled open via JS */
-    display: none;
+    /* drops down from the nav; visibility keeps closed links out of the tab order */
     position: absolute;
-    top: calc(100% - 4px);
+    top: 100%;
     /* break out of .wrap's horizontal padding */
     left: -28px;
     right: -28px;
     flex-direction: column;
     gap: 0;
+    margin: 0;
     background: rgba(11, 16, 30, 0.97);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -625,9 +1041,17 @@ footer {
     border-bottom: 1px solid var(--line);
     padding: 4px 28px 16px;
     z-index: 50;
+    visibility: hidden;
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+    /* exits faster than it enters */
+    transition: clip-path 0.18s ease, opacity 0.18s ease, visibility 0s linear 0.18s;
   }
   .nav-links.open {
-    display: flex;
+    visibility: visible;
+    opacity: 1;
+    clip-path: inset(0 0 -1px 0);
+    transition: clip-path 0.32s var(--ease-out), opacity var(--fast) ease, visibility 0s;
   }
   .nav-links a {
     padding: 13px 0;
@@ -646,13 +1070,23 @@ footer {
     gap: 10px;
   }
 }
+@media (max-width: 440px) {
+  /* label above the address, so the address stays on one line beside the copy button */
+  .contact-email a {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 11px 16px;
+  }
+}
 
-/* NOTE: intentionally no prefers-reduced-motion override. This personal site
-   prioritises a consistent visual experience across machines over honouring the
-   OS reduce-motion setting, so animations run for everyone. (Owner's decision —
-   the JS background/typed-text loops make the same choice.) */
+/* --- pause control: stops every endless loop on the page (WCAG 2.2.2) --- */
+[data-motion='paused'] .role-line .tcaret.idle::after,
+[data-motion='paused'] .reel-hint {
+  animation: none;
+}
 
-/* --- scroll motion (script in src/layouts/Base.astro) --- */
+/* --- scroll motion (script in src/scripts/scroll-motion.ts) --- */
 .scroll-progress {
   position: fixed;
   top: 0;
@@ -671,43 +1105,6 @@ footer {
   opacity: calc(1 - var(--hx, 0) * 0.85);
   will-change: transform, opacity;
 }
-/* section heads: tag slides in from the left, heading rises a beat later */
-.reveal-head {
-  transform: none;
-}
-.reveal-head .tag {
-  display: inline-block;
-  opacity: 0;
-  transform: translateX(-14px);
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.reveal-head h2 {
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.7s ease 0.12s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.12s;
-}
-.reveal-head.in .tag,
-.reveal-head.in h2 {
-  opacity: 1;
-  transform: none;
-}
-/* timeline rail fills with ion light as you read down it */
-.timeline {
-  position: relative;
-}
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  transform-origin: top;
-  transform: scaleY(var(--tl, 0));
-  background: linear-gradient(var(--ion), var(--violet));
-  box-shadow: 0 0 8px rgba(77, 227, 255, 0.7);
-  pointer-events: none;
-}
 
 /* --- intro reel (src/components/IntroReel.astro) --- */
 .reel-frame {
@@ -715,7 +1112,7 @@ footer {
 }
 .reel-stage {
   position: relative;
-  transform: scale(calc(0.9 + var(--rv, 1) * 0.1));
+  transform: scale(calc(0.94 + var(--rv, 1) * 0.06));
   opacity: calc(0.35 + var(--rv, 1) * 0.65);
   transform-origin: 50% 30%;
   will-change: transform;
@@ -743,7 +1140,7 @@ footer {
   border: 1px solid rgba(77, 227, 255, 0.5);
   border-radius: 999px;
   padding: 10px 18px;
-  min-height: 40px;
+  min-height: 44px;
   cursor: pointer;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
@@ -772,12 +1169,16 @@ footer {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 9px 14px;
-  min-height: 36px;
+  min-height: 44px;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--fast) ease, transform var(--fast) ease;
 }
 .reel-btn:hover {
-  border-color: rgba(77, 227, 255, 0.45);
+  border-color: var(--line-hot);
+}
+.reel-btn:active {
+  transform: scale(0.96);
 }
 .reel-btn:focus-visible,
 .reel-hint:focus-visible {
@@ -791,5 +1192,184 @@ footer {
   }
   .reel-stage video {
     aspect-ratio: 9 / 16;
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────
+   Owner's decision (2026-06-30): the black hole background and the typed role
+   keep running for everyone, because machines with OS animations switched off
+   were otherwise losing the look entirely. The nav's pause button is the
+   control for those loops. Everything else honours the setting: nothing travels
+   across the screen, state changes still show through opacity and colour. */
+@media (prefers-reduced-motion: reduce) {
+  .eyebrow .cmd,
+  h1 .ion-name {
+    animation: none;
+  }
+  .eyebrow .caret {
+    animation: caret-off 0.01s linear 0.2s forwards;
+  }
+  html.no-gradient-text h1,
+  .statement,
+  .badges,
+  .cta-row {
+    animation: fade 0.3s ease both;
+  }
+  .fx .hero,
+  .reel-stage {
+    transform: none;
+    opacity: 1;
+    will-change: auto;
+  }
+  .fx .reveal,
+  .fx .t-item > *,
+  .fx .reveal-head h2 {
+    transform: none;
+    transition: opacity 0.3s ease;
+  }
+  .fx .reveal-head .tag {
+    clip-path: none;
+    transition: none;
+  }
+  .site-nav,
+  .nav-links::after,
+  .nav-links,
+  .nav-links.open,
+  .t-item::before,
+  .btn,
+  .btn .arrow,
+  .icon-btn,
+  .card h3 a .ext,
+  .contact-grid a,
+  .copy-btn,
+  .copy-btn svg,
+  .copy-status,
+  .reel-btn {
+    transition-property: opacity, color, background-color, border-color, box-shadow, visibility;
+  }
+  .site-nav.nav-hidden:not(:focus-within) {
+    transform: none;
+  }
+  .btn:hover,
+  .btn:active,
+  .btn-primary:hover,
+  .btn:hover .arrow,
+  .card h3 a:hover .ext,
+  .contact-grid a:hover,
+  .contact-grid a:active,
+  .icon-btn:active,
+  .copy-btn:active,
+  .reel-btn:active,
+  .t-item.lit::before {
+    transform: none;
+  }
+  .nav-links,
+  .nav-links.open {
+    clip-path: none;
+  }
+  .timeline::after {
+    display: none;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Print: recruiters do print these ───────────────────────────────── */
+@page {
+  margin: 16mm;
+}
+@media print {
+  :root {
+    color-scheme: light;
+    --text: #0b101e;
+    --muted: #3a4256;
+    --ion: #0b5f75;
+    --line: #c8cedb;
+  }
+  html,
+  body {
+    background: #fff;
+    color: var(--text);
+  }
+  #gl,
+  #sky,
+  .site-nav,
+  .skip-link,
+  .scroll-progress,
+  .reel,
+  .cta-row,
+  .timeline::before,
+  .timeline::after,
+  .copy-btn,
+  .eyebrow .caret,
+  .role-line .tcaret::after {
+    display: none !important;
+  }
+  .wrap {
+    max-width: none;
+    padding: 0;
+  }
+  .hero {
+    min-height: 0;
+    padding: 0 0 24px;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  h1 .ion-name {
+    background: none !important;
+    -webkit-text-fill-color: currentColor;
+  }
+  h1,
+  h1 .ion-name,
+  .eyebrow *,
+  .statement,
+  .badges,
+  .reveal,
+  .reveal *,
+  .t-item > * {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    animation: none !important;
+  }
+  .card,
+  .badge,
+  .chip,
+  .contact-grid a {
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  /* the typing animation stops wherever it happens to be: print the plain list */
+  .role-line .typed {
+    display: none;
+  }
+  .role-line .sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip-path: none;
+    white-space: normal;
+  }
+  .sec-head {
+    break-after: avoid;
+  }
+  .strip {
+    margin-bottom: 24px;
+  }
+  section.preview {
+    padding-bottom: 28px;
+  }
+  .t-item,
+  .card,
+  .skill-row {
+    break-inside: avoid;
   }
 }

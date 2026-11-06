@@ -1,7 +1,7 @@
 ---
 // 15-second intro reel. Landscape cut on desktop, vertical cut on phones.
 // Behaviour:
-// - Loads only when the section scrolls near, so first paint is unaffected.
+// - Video and poster load only when the section scrolls near, so first paint is unaffected.
 // - Scrolled into view (60%+ visible): restarts from 0 and plays WITH sound,
 //   provided the visitor has interacted with the page at least once (browsers
 //   block audible autoplay until a click/tap/keypress; scrolling does not count).
@@ -9,8 +9,8 @@
 // - Scrolled away: mutes and pauses.
 // - Sound plays for one pass per visit to the section; the loop after that is muted.
 // - Pause / Sound buttons always override the automatic behaviour.
-const DESKTOP = { src: '/media/intro-desktop.mp4', poster: '/media/intro-desktop-poster.jpg' };
-const MOBILE = { src: '/media/intro-mobile.mp4', poster: '/media/intro-mobile-poster.jpg' };
+const DESKTOP = { src: '/media/intro-desktop.mp4', poster: '/media/intro-desktop-poster.webp' };
+const MOBILE = { src: '/media/intro-mobile.mp4', poster: '/media/intro-mobile-poster.webp' };
 const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
 ---
 
@@ -26,7 +26,6 @@ const MOBILE_QUERY = '(max-width: 700px) and (orientation: portrait)';
         muted
         playsinline
         preload="none"
-        poster={DESKTOP.poster}
         data-desktop-src={DESKTOP.src}
         data-desktop-poster={DESKTOP.poster}
         data-mobile-src={MOBILE.src}
